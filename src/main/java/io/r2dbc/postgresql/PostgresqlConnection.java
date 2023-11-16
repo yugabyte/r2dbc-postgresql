@@ -82,6 +82,12 @@ final class PostgresqlConnection implements io.r2dbc.postgresql.api.PostgresqlCo
 
     private volatile IsolationLevel previousIsolationLevel;
 
+    // YugabyteDB Specific
+
+    private String hostConnectedTo;
+
+    private UniformLoadBalancerConnectionStrategy connectionStrategy;
+
     PostgresqlConnection(Client client, Codecs codecs, PortalNameSupplier portalNameSupplier, StatementCache statementCache, IsolationLevel isolationLevel,
                          PostgresqlConnectionConfiguration configuration) {
         this.client = Assert.requireNonNull(client, "client must not be null");
@@ -90,6 +96,7 @@ final class PostgresqlConnection implements io.r2dbc.postgresql.api.PostgresqlCo
         this.codecs = Assert.requireNonNull(codecs, "codecs must not be null");
         this.isolationLevel = Assert.requireNonNull(isolationLevel, "isolationLevel must not be null");
         this.validationQuery = new io.r2dbc.postgresql.PostgresqlStatement(this.resources, "SELECT 1").fetchSize(0).execute().flatMap(PostgresqlResult::getRowsUpdated);
+        this.hostConnectedTo = configuration.getHostConnectedTo();
     }
 
     Client getClient() {
@@ -174,6 +181,10 @@ final class PostgresqlConnection implements io.r2dbc.postgresql.api.PostgresqlCo
 
     @Override
     public Mono<Void> close() {
+        System.out.println("Host Connected to:" + this.hostConnectedTo);
+        if (this.connectionStrategy != null && this.hostConnectedTo != null){
+            connectionStrategy.incDecConnectionCount(hostConnectedTo, -1);
+        }
         return this.client.close().doOnSubscribe(subscription -> {
 
             NotificationAdapter notificationAdapter = this.notificationAdapter.get();
@@ -364,6 +375,10 @@ final class PostgresqlConnection implements io.r2dbc.postgresql.api.PostgresqlCo
 
             return Mono.empty();
         });
+    }
+
+    public void setConnectionStrategy(UniformLoadBalancerConnectionStrategy connectionStrategy){
+        this.connectionStrategy = connectionStrategy;
     }
 
     @Override

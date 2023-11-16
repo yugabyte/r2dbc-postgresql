@@ -69,7 +69,7 @@ public final class PostgresqlConnectionConfiguration {
     /**
      * Default PostgreSQL port.
      */
-    public static final int DEFAULT_PORT = 5432;
+    public static final int DEFAULT_PORT = 5433;
 
     private final String applicationName;
 
@@ -125,6 +125,14 @@ public final class PostgresqlConnectionConfiguration {
 
     private final String username;
 
+    // YugabyteDB Specific
+
+    private final boolean loadBalanceHosts;
+    private final List<String> hosts;
+    private String hostConnectedTo;
+    private final String topologyKeys;
+    private final int YBServersRefreshInterval;
+
     private PostgresqlConnectionConfiguration(String applicationName, boolean autodetectExtensions, @Nullable boolean compatibilityMode, @Nullable Duration connectTimeout, @Nullable String database,
                                               LogLevel errorResponseLogLevel,
                                               List<Extension> extensions, ToIntFunction<String> fetchSize, boolean forceBinary, @Nullable Duration lockWaitTimeout,
@@ -134,7 +142,7 @@ public final class PostgresqlConnectionConfiguration {
                                               int preparedStatementCacheQueries, @Nullable String schema,
                                               @Nullable SingleHostConfiguration singleHostConfiguration, SSLConfig sslConfig, @Nullable Duration statementTimeout,
                                               boolean tcpKeepAlive, boolean tcpNoDelay, TimeZone timeZone,
-                                              String username) {
+                                              String username, boolean loadBalanceHosts, List<String> hosts, String topologyKeys, int ybserversrefreshinterval) {
         this.applicationName = Assert.requireNonNull(applicationName, "applicationName must not be null");
         this.autodetectExtensions = autodetectExtensions;
         this.compatibilityMode = compatibilityMode;
@@ -172,6 +180,12 @@ public final class PostgresqlConnectionConfiguration {
         this.tcpNoDelay = tcpNoDelay;
         this.timeZone = timeZone;
         this.username = Assert.requireNonNull(username, "username must not be null");
+
+        //YugabyteDB Specific
+        this.loadBalanceHosts = loadBalanceHosts;
+        this.hosts = hosts;
+        this.topologyKeys = topologyKeys;
+        this.YBServersRefreshInterval = ybserversrefreshinterval;
     }
 
     /**
@@ -342,6 +356,27 @@ public final class PostgresqlConnectionConfiguration {
         return builder.toString();
     }
 
+    // YugabyteDB Specific
+    boolean isLoadBalanced() {
+        return this.loadBalanceHosts;
+    }
+
+    List<String> getHosts() {
+        return this.hosts;
+    }
+
+    String getTopologyKeys() {
+        return this.topologyKeys;
+    }
+
+    void setHostConnectedTo(String host){
+        this.hostConnectedTo = host;
+    }
+
+    String getHostConnectedTo(){ return this.hostConnectedTo; }
+
+    int getYBServersRefreshInterval() { return this.YBServersRefreshInterval; }
+
     /**
      * A builder for {@link PostgresqlConnectionConfiguration} instances.
      * <p>
@@ -425,6 +460,13 @@ public final class PostgresqlConnectionConfiguration {
         @Nullable
         private String username;
 
+        // YugabyteDB Specific
+
+        private boolean loadBalanceHosts = false;
+        private List<String> hosts = new ArrayList<>();
+        private String topologyKeys = null;
+        private int ybserversrefreshinterval;
+
         private Builder() {
         }
 
@@ -478,7 +520,7 @@ public final class PostgresqlConnectionConfiguration {
                 this.extensions, this.fetchSize, this.forceBinary, this.lockWaitTimeout, this.loopResources, multiHostConfiguration,
                 this.noticeLogLevel, this.options, this.password, this.preferAttachedBuffers,
                 this.preparedStatementCacheQueries, this.schema, singleHostConfiguration,
-                this.createSslConfig(), this.statementTimeout, this.tcpKeepAlive, this.tcpNoDelay, this.timeZone, this.username);
+                this.createSslConfig(), this.statementTimeout, this.tcpKeepAlive, this.tcpNoDelay, this.timeZone, this.username, this.loadBalanceHosts, this.hosts, this.topologyKeys, this.ybserversrefreshinterval);
         }
 
         /**
@@ -609,6 +651,7 @@ public final class PostgresqlConnectionConfiguration {
          */
         public Builder host(String host) {
             Assert.requireNonNull(host, "host must not be null");
+            this.hosts.add(host);
             prepareSingleHostConfiguration().host(host);
             return this;
         }
@@ -625,6 +668,7 @@ public final class PostgresqlConnectionConfiguration {
          */
         public Builder addHost(String host) {
             Assert.requireNonNull(host, "host must not be null");
+            this.hosts.add(host);
             prepareMultiHostConfiguration().addHost(host);
             return this;
         }
@@ -641,6 +685,7 @@ public final class PostgresqlConnectionConfiguration {
          */
         public Builder addHost(String host, int port) {
             Assert.requireNonNull(host, "host must not be null");
+            this.hosts.add(host);
             prepareMultiHostConfiguration().addHost(host, port);
             return this;
         }
@@ -669,6 +714,7 @@ public final class PostgresqlConnectionConfiguration {
          * @since 1.0
          */
         public Builder loadBalanceHosts(boolean loadBalanceHosts) {
+            this.loadBalanceHosts = loadBalanceHosts;
             prepareMultiHostConfiguration().loadBalanceHosts(loadBalanceHosts);
             return this;
         }
@@ -1016,6 +1062,18 @@ public final class PostgresqlConnectionConfiguration {
         }
 
         /**
+         * Configure the topology keys
+         *
+         * @param topologyKeys the topology keys
+         * @return this {@link Builder}
+         */
+
+        public Builder topologyKeys(String topologyKeys) {
+            this.topologyKeys = Assert.requireNonNull(topologyKeys, "topologyKeys must not be null");
+            return this;
+        }
+
+        /**
          * Configure the username.
          *
          * @param username the username
@@ -1024,6 +1082,18 @@ public final class PostgresqlConnectionConfiguration {
          */
         public Builder username(String username) {
             this.username = Assert.requireNonNull(username, "username must not be null");
+            return this;
+        }
+
+        /**
+         * Configure the refresh interval.
+         *
+         * @param refreshinterval the username
+         * @return this {@link Builder}
+         * @throws IllegalArgumentException if {@code ybserversrefreshinterval} is {@code null}
+         */
+        public Builder ybserversrefreshinterval(int refreshinterval) {
+            this.ybserversrefreshinterval = Assert.requireNonNull(refreshinterval, "username must not be null");
             return this;
         }
 
