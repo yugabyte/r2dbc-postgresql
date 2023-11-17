@@ -181,7 +181,6 @@ final class PostgresqlConnection implements io.r2dbc.postgresql.api.PostgresqlCo
 
     @Override
     public Mono<Void> close() {
-        System.out.println("Host Connected to:" + this.hostConnectedTo);
         if (this.connectionStrategy != null && this.hostConnectedTo != null){
             connectionStrategy.incDecConnectionCount(hostConnectedTo, -1);
         }

@@ -18,8 +18,7 @@ import java.util.stream.Collectors;
 public class UniformLoadbalancerTest {
 
     private static int numConnections = 12;
-//    private static final String path = System.getenv("YBDB_PATH");
-    private static final String path = "/Users/ssarah/code/yugabyte-2.18.0.0";
+    private static final String path = System.getenv("YBDB_PATH");
 
     private static PostgresqlConnectionFactory connectionFactory = new PostgresqlConnectionFactory(PostgresqlConnectionConfiguration.builder()
             .addHost("127.0.0.3")
@@ -32,14 +31,14 @@ public class UniformLoadbalancerTest {
 
     public static void main (String args[]) throws InterruptedException {
         checkBasicBehaviour();
-//        checkNodeDownBehaviour();
-//        checkAddNodeBehaviour();
+        checkNodeDownBehaviour();
+        checkAddNodeBehaviour();
     }
 
     private static void checkBasicBehaviour() throws InterruptedException {
-//        startYBDBCluster();
-//
-//        Thread.sleep(5000);
+        startYBDBCluster();
+
+        Thread.sleep(5000);
         ArrayList<PostgresqlConnection> connections = new ArrayList<>();
 
         for (int i = 0; i < 12; i++) {

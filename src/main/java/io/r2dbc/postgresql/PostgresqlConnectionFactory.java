@@ -150,6 +150,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
             try{
                 Mono<io.r2dbc.postgresql.api.PostgresqlConnection> newConnection = doCreateConnection(connectionStrategy,false, null, chosenHost).cast(io.r2dbc.postgresql.api.PostgresqlConnection.class);
                 newConn = (PostgresqlConnection) newConnection.block();
+                connectionStrategy.incDecConnectionCount(chosenHost, 1);
                 if (!connectionStrategy.refresh(newConn)){
                     connectionStrategy.incDecConnectionCount(chosenHost, -1);
                     connectionStrategy.updateFailedHosts(chosenHost);
