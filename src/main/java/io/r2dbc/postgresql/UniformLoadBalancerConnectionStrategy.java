@@ -22,7 +22,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
 
     protected static List<String> servers = new ArrayList<>();
 
-    static ConcurrentHashMap<String, Integer> hostToConnectionCount = new ConcurrentHashMap<>();
+    ConcurrentHashMap<String, Integer> hostToConnectionCount = new ConcurrentHashMap<>();
 
     protected SocketAddress endpoint;
 

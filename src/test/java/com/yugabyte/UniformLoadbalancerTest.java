@@ -134,12 +134,12 @@ public class UniformLoadbalancerTest {
 
     }
 
-    private static void startYBDBCluster() {
+    protected static void startYBDBCluster() {
         executeCmd(path + "/bin/yb-ctl destroy", "Stop YugabyteDB cluster", 10);
         executeCmd(path + "/bin/yb-ctl create --rf 3", "Start YugabyteDB rf=3 cluster", 15);
     }
 
-    private static void executeCmd(String cmd, String msg, int timeout) {
+    protected static void executeCmd(String cmd, String msg, int timeout) {
         try {
             ProcessBuilder builder = new ProcessBuilder();
             builder.command("sh", "-c", cmd);
@@ -155,7 +155,7 @@ public class UniformLoadbalancerTest {
         }
     }
 
-    private static void verifyConns(List<Integer> expectedCounts){
+    protected static void verifyConns(List<Integer> expectedCounts){
         int j = 1;
         for (int expectedCount : expectedCounts){
             if(expectedCount != -1){
@@ -165,7 +165,7 @@ public class UniformLoadbalancerTest {
         }
     }
 
-    private static void verifyOn(String server, int expectedCount) {
+    protected static void verifyOn(String server, int expectedCount) {
         try {
             ProcessBuilder builder = new ProcessBuilder();
             builder.command("sh", "-c", "curl http://" + server + ":13000/rpcz");

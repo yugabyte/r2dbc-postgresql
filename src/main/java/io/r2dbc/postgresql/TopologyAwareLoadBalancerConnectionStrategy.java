@@ -8,6 +8,7 @@ import reactor.core.publisher.Mono;
 
 import java.net.InetSocketAddress;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBalancerConnectionStrategy{
 
@@ -175,29 +176,14 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
 
     @Override
     public Mono<Client> connect() {
-        if (hostToConnectionCount.isEmpty() && currentPublicIps.isEmpty()) {
-            // Try fallback on rest of the cluster nodes
-            servers = getPrivateOrPublicServers(new ArrayList<String>(), currentPublicIps);
-            if (servers != null && !servers.isEmpty()) {
-                for (String h : servers) {
-                    if (!hostToConnectionCount.containsKey(h)) {
-                        hostToConnectionCount.put(h, 0);
-                    }
-                }
-            } else {
-                return null;
-            }
-        }
-        String host = getHostWithLeastConnections();
+        return null;
+    }
+
+    public Mono<Client> connect(String host) {
         incDecConnectionCount(host, 1);
         endpoint = InetSocketAddress.createUnresolved(host, 5433);
         Mono<Client> client = this.connectionFunction.connect(endpoint, this.connectionSettings);
-        if (client != null) {
-            return client;
-        }
-        updateFailedHosts(host);
-        incDecConnectionCount(host, -1);
-        return connect();
+        return client;
     }
 
     static class CloudPlacement {
