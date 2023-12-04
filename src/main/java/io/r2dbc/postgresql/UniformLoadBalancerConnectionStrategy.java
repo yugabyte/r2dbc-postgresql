@@ -63,15 +63,13 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
                  .collectList().block();
         currentPublicIps = Results.flatMap(result -> result.map((row, rowMetaData) -> row.get("public_ip", String.class)))
                 .collectList().block();
-        for(String host : controlConnection.getResources().getConfiguration().getHosts()){
-            if (privateHosts.contains(host)){
+        String hostConnectedTo = controlConnection.getResources().getConfiguration().getHostConnectedTo();
+            if (privateHosts.contains(hostConnectedTo)){
                 useHostColumn = Boolean.TRUE;
-                break;
             }
-            else {
+            else if (currentPublicIps.contains(hostConnectedTo)) {
                 useHostColumn = Boolean.FALSE;
             }
-        }
         return getPrivateOrPublicServers(privateHosts, currentPublicIps);
     }
 
@@ -122,7 +120,6 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
         // else clear server list
         long currTime = System.currentTimeMillis();
         lastServerListFetchTime = currTime;
-        long now = System.currentTimeMillis() / 1000;
 
         servers = getCurrentServers(controlConnection);
         unreachableHosts.clear();
@@ -130,9 +127,14 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
             return false;
         }
 
+        List<String> hosts = this.configuration.getHosts();
+
         for (String h : servers) {
             if (!hostToConnectionCount.containsKey(h)) {
                 hostToConnectionCount.put(h, 0);
+            }
+            if (!hosts.contains(h)){
+                this.configuration.setHosts(h);
             }
         }
         return true;

@@ -14,6 +14,7 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
 
     protected final ConnectionFunction connectionFunction;
     private final ConnectionSettings connectionSettings;
+    private final PostgresqlConnectionConfiguration configuration;
     private final String placements;
     private final Map<Integer, Set<CloudPlacement>> allowedPlacements = new HashMap<>();
     private final Map<Integer, List<String>> fallbackPrivateIPs = new HashMap<>();
@@ -23,9 +24,11 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
     private final int REST_OF_CLUSTER = -1;
     public static final int MAX_PREFERENCE_VALUE = 10;
 
-    public TopologyAwareLoadBalancerConnectionStrategy(ConnectionFunction connectionFunction, String placementvalues, ConnectionSettings settings, int refreshListSeconds) {
+    public TopologyAwareLoadBalancerConnectionStrategy(ConnectionFunction connectionFunction, PostgresqlConnectionConfiguration configuration, String placementvalues, ConnectionSettings settings, int refreshListSeconds) {
+        super(connectionFunction,configuration,settings, refreshListSeconds);
         placements = placementvalues;
         this.connectionFunction = connectionFunction;
+        this.configuration = configuration;
         this.connectionSettings = settings;
         this.refreshListSeconds = refreshListSeconds > 0 && refreshListSeconds <= 600 ?
                 refreshListSeconds : 300;

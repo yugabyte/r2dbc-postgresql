@@ -123,7 +123,6 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
     }
 
     private Mono<io.r2dbc.postgresql.api.PostgresqlConnection> createLoadBalancedConnection() {
-        String hostConnectedTo = null;
         PostgresqlConnection newConn = null;
         String chosenHost = null;
         UniformLoadBalancerConnectionStrategy connectionStrategy = getAppropriateLoadBlancer();
@@ -137,7 +136,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
                 }
             }
         }
-        if (!connectionStrategy.refresh(controlConnection)) {
+        if (controlConnection == null || !connectionStrategy.refresh(controlConnection)) {
             return null;
         }
         controlConnection.close().block();
@@ -186,7 +185,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
         if (this.configuration.getTopologyKeys() != null) {
             connectionStrategy = connectionStrategyMap.get(this.configuration.getTopologyKeys());
             if (connectionStrategy == null){
-                connectionStrategy = new TopologyAwareLoadBalancerConnectionStrategy(new SingleHostConnectionFunction(this.connectionFunction, this.configuration), this.configuration.getTopologyKeys(), this.configuration.getConnectionSettings(), this.configuration.getYBServersRefreshInterval());
+                connectionStrategy = new TopologyAwareLoadBalancerConnectionStrategy(new SingleHostConnectionFunction(this.connectionFunction, this.configuration), this.configuration, this.configuration.getTopologyKeys(), this.configuration.getConnectionSettings(), this.configuration.getYBServersRefreshInterval());
                 connectionStrategyMap.put(this.configuration.getTopologyKeys(), connectionStrategy);
             }
         }

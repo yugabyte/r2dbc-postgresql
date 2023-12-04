@@ -128,7 +128,7 @@ public final class PostgresqlConnectionConfiguration {
     // YugabyteDB Specific
 
     private final boolean loadBalanceHosts;
-    private final List<String> hosts;
+    private final List<String> hosts; // Contains the list of all available hosts that can be connected to
     private String hostConnectedTo;
     private final String topologyKeys;
     private final int YBServersRefreshInterval;
@@ -222,6 +222,10 @@ public final class PostgresqlConnectionConfiguration {
             ", tcpNoDelay=" + this.tcpNoDelay +
             ", timeZone=" + this.timeZone +
             ", username='" + this.username + '\'' +
+            ", loadBalanceHosts=" + this.loadBalanceHosts +
+            ", hosts=" + this.hosts +
+            ", topologyKeys=" + this.topologyKeys +
+            ", YBServersRefreshInterval=" + this.YBServersRefreshInterval +
             '}';
     }
 
@@ -364,6 +368,8 @@ public final class PostgresqlConnectionConfiguration {
     List<String> getHosts() {
         return this.hosts;
     }
+
+    void setHosts(String host){ this.hosts.add(host); }
 
     String getTopologyKeys() {
         return this.topologyKeys;

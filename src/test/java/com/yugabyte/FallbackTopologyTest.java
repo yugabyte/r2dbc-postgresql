@@ -19,6 +19,7 @@ public class FallbackTopologyTest extends UniformLoadbalancerTest {
     }
 
     private static void checkBasicBehavior() {
+        System.out.println("Checking Basic Behaviour...");
         // Start RF=3 cluster with placements 127.0.0.1 -> 2a, 127.0.0.2 -> 2b and 127.0.0.3 -> 2c
         startYBDBCluster();
 
@@ -48,6 +49,9 @@ public class FallbackTopologyTest extends UniformLoadbalancerTest {
     }
 
     private static void checkMultiNodeDownBehaviour(){
+
+        System.out.println("Checking Multi Node Down Behaviour...");
+
         startYBDBClusterWithSixNodes();
 
         try{
