@@ -23,7 +23,9 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
 
     protected static List<String> servers = new ArrayList<>();
 
-    ConcurrentHashMap<String, Integer> hostToConnectionCount = new ConcurrentHashMap<>();
+    ConcurrentHashMap<String, Integer> hostToNumConnMap = new ConcurrentHashMap<>();
+    ConcurrentHashMap<String, Integer> hostToNumConnCount = new ConcurrentHashMap<>();
+    final ConcurrentHashMap<String, Integer> hostToPriorityMap = new ConcurrentHashMap<>();
 
     protected SocketAddress endpoint;
 
@@ -49,8 +51,8 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
     }
 
     public void printCurrentConnectionCounts() {
-        for (String host : hostToConnectionCount.keySet()) {
-            System.out.println("Host: " + host + " has " + hostToConnectionCount.get(host) + " connections");
+        for (String host : hostToNumConnMap.keySet()) {
+            System.out.println("Host: " + host + " has " + hostToNumConnMap.get(host) + " connections");
         }
     }
 
@@ -112,7 +114,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
 
     public synchronized void updateFailedHosts(String chosenHost) {
         unreachableHosts.add(chosenHost);
-        hostToConnectionCount.remove(chosenHost);
+        hostToNumConnMap.remove(chosenHost);
     }
 
     public boolean needsRefresh() {
@@ -140,8 +142,8 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
         }
 
         for (String h : servers) {
-            if (!hostToConnectionCount.containsKey(h)) {
-                hostToConnectionCount.put(h, 0);
+            if (!hostToNumConnMap.containsKey(h)) {
+                hostToNumConnMap.put(h, 0);
             }
         }
         return true;
@@ -154,19 +156,21 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
     // When a connection is closed, decrement the connection count for the host
 
     public void incDecConnectionCount(String host, int incDec) {
-        if (hostToConnectionCount.get(host) == 0 && incDec < 0)
+        if (hostToNumConnMap.get(host) == null)
             return;
-        hostToConnectionCount.put(host, hostToConnectionCount.get(host) + incDec);
+        if (hostToNumConnMap.get(host) == 0 && incDec < 0)
+            return;
+        hostToNumConnMap.put(host, hostToNumConnMap.get(host) + incDec);
     }
 
     // Get the host with the least number of connections
     public String getHostWithLeastConnections() {
-        if(hostToConnectionCount.isEmpty()){
+        if(hostToNumConnMap.isEmpty()){
             servers = getPrivateOrPublicServers(new ArrayList<>(), currentPublicIps);
             if (servers != null && !servers.isEmpty()) {
                 for (String h : servers) {
-                    if (!hostToConnectionCount.containsKey(h)) {
-                        hostToConnectionCount.put(h, 0);
+                    if (!hostToNumConnMap.containsKey(h)) {
+                        hostToNumConnMap.put(h, 0);
                     }
                 }
             } else {
@@ -176,8 +180,8 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
         String hostWithLeastConnections = null;
         int leastConnections = Integer.MAX_VALUE;
         ArrayList<String> minConnectionsHostList = new ArrayList<>();
-        for (String host : hostToConnectionCount.keySet()) {
-            int currLoad = hostToConnectionCount.get(host);
+        for (String host : hostToNumConnMap.keySet()) {
+            int currLoad = hostToNumConnMap.get(host);
             if (!unreachableHosts.contains(host) && currLoad < leastConnections) {
                 leastConnections = currLoad;
                 minConnectionsHostList.clear();
@@ -192,6 +196,13 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
         }
 
         return hostWithLeastConnections;
+    }
+
+    public boolean hasMorePreferredNode(String chosenHost) {
+        return false;
+    }
+
+    protected void updatePriorityMap(String host, String cloud, String region, String zone) {
     }
 }
 

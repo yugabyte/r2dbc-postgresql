@@ -86,6 +86,7 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
     protected List<String> getCurrentServers(PostgresqlConnection controlConnection){
 
         currentPublicIps.clear();
+        hostToPriorityMap.clear();
         List <String> allPrivateIPs = new ArrayList<>();
         List <String> allPublicIPs = new ArrayList<>();
         Flux<PostgresqlResult> Results = controlConnection.createStatement("Select * from yb_servers()").execute();
@@ -94,6 +95,7 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
                     String cloud = row.get("cloud", String.class);
                     String region = row.get("region", String.class);
                     String zone = row.get("zone", String.class);
+                    updatePriorityMap(host, cloud, region, zone);
                     CloudPlacement cp = new CloudPlacement(cloud, region, zone);
                     if (cp.isContainedIn(allowedPlacements.get(PRIMARY_PLACEMENTS))){
                        return host;
@@ -128,6 +130,7 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
                         String cloud = row.get("cloud", String.class);
                         String region = row.get("region", String.class);
                         String zone = row.get("zone", String.class);
+                        updatePriorityMap(host, cloud, region, zone);
                         CloudPlacement cp = new CloudPlacement(cloud, region, zone);
                         if (cp.isContainedIn(allowedCPs.getValue())){
                             return host;
@@ -199,6 +202,47 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
 
         return super.getPrivateOrPublicServers(fallbackPrivateIPs.get(REST_OF_CLUSTER),
                 fallbackPublicIPs.get(REST_OF_CLUSTER));
+    }
+
+    @Override
+    public boolean hasMorePreferredNode(String chosenHost) {
+        if (hostToPriorityMap.containsKey(chosenHost)) {
+            Integer chosenHostPriority = hostToPriorityMap.get(chosenHost);
+            if (chosenHostPriority != null) {
+                for (int i = 1; i < chosenHostPriority; i++) {
+                    if (hostToPriorityMap.values().contains(i)) {
+                        hostToNumConnMap.remove(chosenHost);
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    @Override
+    protected void updatePriorityMap(String host, String cloud, String region, String zone) {
+        if (!unreachableHosts.contains(host)) {
+            int priority = getPriority(cloud, region, zone);
+            hostToPriorityMap.put(host, priority);
+        }
+    }
+
+    private int getPriority(String cloud, String region, String zone) {
+        CloudPlacement cp = new CloudPlacement(cloud, region, zone);
+        return getKeysByValue(cp);
+    }
+
+    private int getKeysByValue(CloudPlacement cp) {
+        int i;
+        for (i = 1; i <= MAX_PREFERENCE_VALUE; i++) {
+            if (allowedPlacements.get(i) != null && !allowedPlacements.get(i).isEmpty()) {
+                if (cp.isContainedIn(allowedPlacements.get(i))) {
+                    return i;
+                }
+            }
+        }
+        return MAX_PREFERENCE_VALUE + 1;
     }
 
     @Override

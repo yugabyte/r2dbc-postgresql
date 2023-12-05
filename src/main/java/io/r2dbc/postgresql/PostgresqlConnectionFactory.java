@@ -122,7 +122,6 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
         String chosenHost = null;
         UniformLoadBalancerConnectionStrategy connectionStrategy = getAppropriateLoadBlancer();
         List<String> hosts = this.configuration.getHosts();
-        List<String> hostsCopy = this.configuration.getHosts();
             if (chosenHost == null) {
                 for (Iterator<String> iterator = hosts.iterator(); iterator.hasNext();) {
                     String host = iterator.next();
@@ -166,6 +165,13 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
                     }
                 }
                 else {
+                    boolean betterNodeAvailable = connectionStrategy.hasMorePreferredNode(chosenHost);
+                    if (betterNodeAvailable){
+                        connectionStrategy.incDecConnectionCount(chosenHost, -1);
+                        newConn.close().block();
+                        newConnection.block().close().block();
+                        return createLoadBalancedConnection();
+                    }
                     newConn.close().block();
                     return newConnection;
                 }
