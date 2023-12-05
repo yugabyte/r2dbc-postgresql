@@ -86,6 +86,8 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
     protected List<String> getCurrentServers(PostgresqlConnection controlConnection){
 
         currentPublicIps.clear();
+        List <String> allPrivateIPs = new ArrayList<>();
+        List <String> allPublicIPs = new ArrayList<>();
         Flux<PostgresqlResult> Results = controlConnection.createStatement("Select * from yb_servers()").execute();
         List<String> privateHosts = Results.flatMap(result -> result.map((row, rowMetadata) -> {
                     String host = row.get("host", String.class);
@@ -102,6 +104,7 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
                 .block();
 
         privateHosts.removeAll(Arrays.asList("", null));
+        allPrivateIPs.addAll(privateHosts);
 
         currentPublicIps = Results.flatMap(result -> result.map((row, rowMetadata) -> {
             String host = row.get("public_ip", String.class);
@@ -117,7 +120,7 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
                 .collectList()
                 .block();
         currentPublicIps.removeAll(Arrays.asList("", null));
-
+        allPublicIPs.addAll(currentPublicIps);
 
         for (Map.Entry<Integer, Set<CloudPlacement>> allowedCPs : allowedPlacements.entrySet()) {
             List<String> privateIPs = Results.flatMap(result -> result.map((row, rowMetadata) -> {
@@ -136,6 +139,7 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
 
             privateIPs.removeAll(Arrays.asList("", null));
             fallbackPrivateIPs.put(allowedCPs.getKey(), privateIPs);
+            allPrivateIPs.addAll(privateIPs);
 
             List<String> publicIPs = Results.flatMap(result -> result.map((row, rowMetadata) -> {
                 String host = row.get("public_ip", String.class);
@@ -153,6 +157,26 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
 
             publicIPs.removeAll(Arrays.asList("", null));
             fallbackPublicIPs.put(allowedCPs.getKey(), privateIPs);
+            allPublicIPs.addAll(publicIPs);
+        }
+
+        String hostConnectedTo = controlConnection.getResources().getConfiguration().getHostConnectedTo();
+        List<String> hostsavailable = this.configuration.getHosts();
+        if (allPrivateIPs.contains(hostConnectedTo)){
+            useHostColumn = Boolean.TRUE;
+            for (String privateIP : allPrivateIPs) {
+                if (!hostsavailable.contains(privateIP)) {
+                    this.configuration.setHosts(privateIP);
+                }
+            }
+        }
+        else if (allPublicIPs.contains(hostConnectedTo)) {
+            useHostColumn = Boolean.FALSE;
+            for (String publicIP : allPublicIPs) {
+                if (!hostsavailable.contains(publicIP)) {
+                    this.configuration.setHosts(publicIP);
+                }
+            }
         }
 
         return getPrivateOrPublicServers(privateHosts, currentPublicIps);
@@ -175,6 +199,43 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
 
         return super.getPrivateOrPublicServers(fallbackPrivateIPs.get(REST_OF_CLUSTER),
                 fallbackPublicIPs.get(REST_OF_CLUSTER));
+    }
+
+    @Override
+    public synchronized void updateFailedHosts(String chosenHost) {
+        super.updateFailedHosts(chosenHost);
+        for (int i = FIRST_FALLBACK; i <= MAX_PREFERENCE_VALUE; i++) {
+            if (fallbackPrivateIPs.get(i) != null && !fallbackPrivateIPs.get(i).isEmpty()) {
+                if (fallbackPrivateIPs.get(i).contains(chosenHost)) {
+                    List<String> hosts = fallbackPrivateIPs.computeIfAbsent(i, k -> new ArrayList<>());
+                    hosts.remove(chosenHost);
+                    return;
+                }
+            }
+            if (fallbackPublicIPs.get(i) != null && !fallbackPublicIPs.get(i).isEmpty()) {
+                if (fallbackPublicIPs.get(i).contains(chosenHost)) {
+                    List<String> hosts = fallbackPublicIPs.computeIfAbsent(i, k -> new ArrayList<>());
+                    hosts.remove(chosenHost);
+                    return;
+                }
+            }
+        }
+        if (fallbackPrivateIPs.get(REST_OF_CLUSTER) != null) {
+            if (fallbackPrivateIPs.get(REST_OF_CLUSTER).contains(chosenHost)) {
+                List<String> hosts = fallbackPrivateIPs.computeIfAbsent(REST_OF_CLUSTER,
+                        k -> new ArrayList<>());
+                hosts.remove(chosenHost);
+                return;
+            }
+        }
+
+        if (fallbackPublicIPs.get(REST_OF_CLUSTER) != null) {
+            if (fallbackPublicIPs.get(REST_OF_CLUSTER).contains(chosenHost)) {
+                List<String> hosts = fallbackPublicIPs.computeIfAbsent(REST_OF_CLUSTER,
+                        k -> new ArrayList<>());
+                hosts.remove(chosenHost);
+            }
+        }
     }
 
     @Override

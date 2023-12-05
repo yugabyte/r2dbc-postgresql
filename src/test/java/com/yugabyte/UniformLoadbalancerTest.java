@@ -41,13 +41,10 @@ public class UniformLoadbalancerTest {
         Thread.sleep(5000);
         ArrayList<PostgresqlConnection> connections = new ArrayList<>();
 
-        for (int i = 0; i < 12; i++) {
+        for (int i = 0; i < numConnections; i++) {
             PostgresqlConnection connection = connectionFactory.create().block();
             connections.add(connection);
         }
-
-        UniformLoadBalancerConnectionStrategy strategy = new UniformLoadBalancerConnectionStrategy();
-        strategy.printCurrentConnectionCounts();
 
         verifyConns(Arrays.asList(4, 4, 4));
 
@@ -62,13 +59,10 @@ public class UniformLoadbalancerTest {
         Thread.sleep(5000);
         ArrayList<PostgresqlConnection> connections = new ArrayList<>();
 
-        for (int i = 0; i < 12; i++) {
+        for (int i = 0; i < numConnections; i++) {
             PostgresqlConnection connection = connectionFactory.create().block();
             connections.add(connection);
         }
-
-        UniformLoadBalancerConnectionStrategy strategy = new UniformLoadBalancerConnectionStrategy();
-        strategy.printCurrentConnectionCounts();
 
         verifyConns(Arrays.asList(4, 4, 4));
 
@@ -81,12 +75,11 @@ public class UniformLoadbalancerTest {
         executeCmd(path + "/bin/yb-ctl stop_node 1", "Stop Node 1 of the cluster", 10);
         Thread.sleep(10);
 
-        for (int i = 0; i < 12; i++) {
+        for (int i = 0; i < numConnections; i++) {
             PostgresqlConnection connection = connectionFactory.create().block();
             connections.add(connection);
         }
 
-        strategy.printCurrentConnectionCounts();
         verifyConns(Arrays.asList(-1, 6, 6));
 
         for (PostgresqlConnection connection: connections) {
@@ -101,13 +94,10 @@ public class UniformLoadbalancerTest {
         Thread.sleep(5000);
         ArrayList<PostgresqlConnection> connections = new ArrayList<>();
 
-        for (int i = 0; i < 12; i++) {
+        for (int i = 0; i < numConnections; i++) {
             PostgresqlConnection connection = connectionFactory.create().block();
             connections.add(connection);
         }
-
-        UniformLoadBalancerConnectionStrategy strategy = new UniformLoadBalancerConnectionStrategy();
-        strategy.printCurrentConnectionCounts();
 
         verifyConns(Arrays.asList(4, 4, 4));
 
@@ -120,12 +110,11 @@ public class UniformLoadbalancerTest {
         executeCmd(path + "/bin/yb-ctl add_node", "Adding 1 node to the cluster", 10);
         Thread.sleep(10000);
 
-        for (int i = 0; i < 12; i++) {
+        for (int i = 0; i < numConnections; i++) {
             PostgresqlConnection connection = connectionFactory.create().block();
             connections.add(connection);
         }
 
-        strategy.printCurrentConnectionCounts();
         verifyConns(Arrays.asList(3, 3, 3, 3));
 
         for (PostgresqlConnection connection: connections) {
@@ -157,6 +146,7 @@ public class UniformLoadbalancerTest {
 
     protected static void verifyConns(List<Integer> expectedCounts){
         int j = 1;
+        System.out.println("Client backend processes on ");
         for (int expectedCount : expectedCounts){
             if(expectedCount != -1){
                 verifyOn("127.0.0."+j, expectedCount);

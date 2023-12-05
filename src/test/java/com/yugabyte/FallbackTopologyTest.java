@@ -12,6 +12,7 @@ import java.util.List;
 public class FallbackTopologyTest extends UniformLoadbalancerTest {
 
     private static final String path = System.getenv("YBDB_PATH");
+    private static final int numConnections = 12;
 
     public static void main (String args[]){
         checkBasicBehavior();
@@ -92,7 +93,7 @@ public class FallbackTopologyTest extends UniformLoadbalancerTest {
         ArrayList<PostgresqlConnection> connections = new ArrayList<>();
 
         try {
-            for (int i = 0; i < 12; i++) {
+            for (int i = 0; i < numConnections; i++) {
                 PostgresqlConnection connection = connectionFactory.create().block();
                 connections.add(connection);
             }
@@ -106,10 +107,7 @@ public class FallbackTopologyTest extends UniformLoadbalancerTest {
             }
             return;
         }
-
-        UniformLoadBalancerConnectionStrategy strategy = new UniformLoadBalancerConnectionStrategy();
-        strategy.printCurrentConnectionCounts();
-
+        System.out.println("Created " + numConnections + " connections");
         verifyConns(expectedInput);
 
         for (PostgresqlConnection connection: connections) {

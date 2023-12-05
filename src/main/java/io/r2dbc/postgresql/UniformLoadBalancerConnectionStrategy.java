@@ -10,6 +10,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy {
@@ -64,11 +65,22 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
         currentPublicIps = Results.flatMap(result -> result.map((row, rowMetaData) -> row.get("public_ip", String.class)))
                 .collectList().block();
         String hostConnectedTo = controlConnection.getResources().getConfiguration().getHostConnectedTo();
+        List<String> hostsavailable = this.configuration.getHosts();
             if (privateHosts.contains(hostConnectedTo)){
                 useHostColumn = Boolean.TRUE;
+                for(String host : privateHosts) {
+                    if (!hostsavailable.contains(host)) {
+                        this.configuration.setHosts(host);
+                    }
+                }
             }
             else if (currentPublicIps.contains(hostConnectedTo)) {
                 useHostColumn = Boolean.FALSE;
+                for(String host : currentPublicIps) {
+                    if (!hostsavailable.contains(host)) {
+                        this.configuration.setHosts(host);
+                    }
+                }
             }
         return getPrivateOrPublicServers(privateHosts, currentPublicIps);
     }
@@ -127,14 +139,9 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
             return false;
         }
 
-        List<String> hosts = this.configuration.getHosts();
-
         for (String h : servers) {
             if (!hostToConnectionCount.containsKey(h)) {
                 hostToConnectionCount.put(h, 0);
-            }
-            if (!hosts.contains(h)){
-                this.configuration.setHosts(h);
             }
         }
         return true;
@@ -154,14 +161,36 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
 
     // Get the host with the least number of connections
     public String getHostWithLeastConnections() {
-        String hostWithLeastConnections = "";
-        int leastConnections = Integer.MAX_VALUE;
-        for (String host : hostToConnectionCount.keySet()) {
-            if (!unreachableHosts.contains(host) && hostToConnectionCount.get(host) < leastConnections) {
-                hostWithLeastConnections = host;
-                leastConnections = hostToConnectionCount.get(host);
+        if(hostToConnectionCount.isEmpty()){
+            servers = getPrivateOrPublicServers(new ArrayList<>(), currentPublicIps);
+            if (servers != null && !servers.isEmpty()) {
+                for (String h : servers) {
+                    if (!hostToConnectionCount.containsKey(h)) {
+                        hostToConnectionCount.put(h, 0);
+                    }
+                }
+            } else {
+                return null;
             }
         }
+        String hostWithLeastConnections = null;
+        int leastConnections = Integer.MAX_VALUE;
+        ArrayList<String> minConnectionsHostList = new ArrayList<>();
+        for (String host : hostToConnectionCount.keySet()) {
+            int currLoad = hostToConnectionCount.get(host);
+            if (!unreachableHosts.contains(host) && currLoad < leastConnections) {
+                leastConnections = currLoad;
+                minConnectionsHostList.clear();
+                minConnectionsHostList.add(host);
+            }
+            else if (!unreachableHosts.contains(host) && currLoad == leastConnections) {
+                minConnectionsHostList.add(host);
+            }
+        }
+        if (minConnectionsHostList.size() > 0) {
+            hostWithLeastConnections = minConnectionsHostList.get(new Random().nextInt(minConnectionsHostList.size()));
+        }
+
         return hostWithLeastConnections;
     }
 }

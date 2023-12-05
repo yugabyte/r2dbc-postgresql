@@ -39,12 +39,7 @@ import reactor.util.annotation.Nullable;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.TimeZone;
+import java.util.*;
 
 /**
  * An implementation of {@link ConnectionFactory} for creating connections to a PostgreSQL database.
@@ -126,16 +121,25 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
         PostgresqlConnection newConn = null;
         String chosenHost = null;
         UniformLoadBalancerConnectionStrategy connectionStrategy = getAppropriateLoadBlancer();
-        if (chosenHost == null) {
-            List<String> hosts = this.configuration.getHosts();
-            for (String host: hosts) {
-                ConnectionFunction connectionFunction = new SingleHostConnectionFunction(this.connectionFunction, this.configuration);
-                controlConnection = doCreateConnection(null,false, connectionFunction, host).block();
-                if (controlConnection != null) {
-                    break;
+        List<String> hosts = this.configuration.getHosts();
+        List<String> hostsCopy = this.configuration.getHosts();
+            if (chosenHost == null) {
+                for (Iterator<String> iterator = hosts.iterator(); iterator.hasNext();) {
+                    String host = iterator.next();
+                    ConnectionFunction connectionFunction = new SingleHostConnectionFunction(this.connectionFunction, this.configuration);
+                    try{
+                        controlConnection = doCreateConnection(null,false, connectionFunction, host).block();
+                        if (controlConnection != null) {
+                            break;
+                        }
+                    }catch (Exception ex){
+                        iterator.remove();
+                        if (hosts.isEmpty())
+                            throw ex;
+                    }
                 }
             }
-        }
+
         if (controlConnection == null || !connectionStrategy.refresh(controlConnection)) {
             return null;
         }
