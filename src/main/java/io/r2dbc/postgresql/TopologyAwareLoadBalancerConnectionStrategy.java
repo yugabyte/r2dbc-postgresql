@@ -205,7 +205,7 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
     }
 
     @Override
-    public boolean hasMorePreferredNode(String chosenHost) {
+    public synchronized boolean hasMorePreferredNode(String chosenHost) {
         if (hostToPriorityMap.containsKey(chosenHost)) {
             Integer chosenHostPriority = hostToPriorityMap.get(chosenHost);
             if (chosenHostPriority != null) {

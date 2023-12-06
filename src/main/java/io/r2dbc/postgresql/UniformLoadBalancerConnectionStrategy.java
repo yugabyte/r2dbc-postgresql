@@ -24,7 +24,6 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
     protected static List<String> servers = new ArrayList<>();
 
     ConcurrentHashMap<String, Integer> hostToNumConnMap = new ConcurrentHashMap<>();
-    ConcurrentHashMap<String, Integer> hostToNumConnCount = new ConcurrentHashMap<>();
     final ConcurrentHashMap<String, Integer> hostToPriorityMap = new ConcurrentHashMap<>();
 
     protected SocketAddress endpoint;
@@ -155,7 +154,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
 
     // When a connection is closed, decrement the connection count for the host
 
-    public void incDecConnectionCount(String host, int incDec) {
+    public synchronized void incDecConnectionCount(String host, int incDec) {
         if (hostToNumConnMap.get(host) == null)
             return;
         if (hostToNumConnMap.get(host) == 0 && incDec < 0)
@@ -164,7 +163,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
     }
 
     // Get the host with the least number of connections
-    public String getHostWithLeastConnections() {
+    public synchronized String getHostWithLeastConnections() {
         if(hostToNumConnMap.isEmpty()){
             servers = getPrivateOrPublicServers(new ArrayList<>(), currentPublicIps);
             if (servers != null && !servers.isEmpty()) {
@@ -202,7 +201,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
         return false;
     }
 
-    protected void updatePriorityMap(String host, String cloud, String region, String zone) {
+    protected synchronized void updatePriorityMap(String host, String cloud, String region, String zone) {
     }
 }
 

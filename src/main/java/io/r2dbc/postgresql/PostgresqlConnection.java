@@ -54,6 +54,8 @@ import reactor.util.annotation.Nullable;
 
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 
 import static io.r2dbc.postgresql.client.TransactionStatus.IDLE;
@@ -87,6 +89,9 @@ final class PostgresqlConnection implements io.r2dbc.postgresql.api.PostgresqlCo
     private String hostConnectedTo;
 
     private UniformLoadBalancerConnectionStrategy connectionStrategy;
+
+    private static Lock lock = new ReentrantLock();
+
 
     PostgresqlConnection(Client client, Codecs codecs, PortalNameSupplier portalNameSupplier, StatementCache statementCache, IsolationLevel isolationLevel,
                          PostgresqlConnectionConfiguration configuration) {
@@ -181,9 +186,11 @@ final class PostgresqlConnection implements io.r2dbc.postgresql.api.PostgresqlCo
 
     @Override
     public Mono<Void> close() {
+        lock.lock();
         if (this.connectionStrategy != null && this.hostConnectedTo != null){
             connectionStrategy.incDecConnectionCount(hostConnectedTo, -1);
         }
+        lock.unlock();
         return this.client.close().doOnSubscribe(subscription -> {
 
             NotificationAdapter notificationAdapter = this.notificationAdapter.get();

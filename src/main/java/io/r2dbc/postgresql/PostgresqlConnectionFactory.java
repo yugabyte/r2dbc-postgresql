@@ -117,7 +117,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
 
     }
 
-    private Mono<io.r2dbc.postgresql.api.PostgresqlConnection> createLoadBalancedConnection() {
+    private synchronized Mono<io.r2dbc.postgresql.api.PostgresqlConnection>  createLoadBalancedConnection() {
         PostgresqlConnection newConn = null;
         String chosenHost = null;
         UniformLoadBalancerConnectionStrategy connectionStrategy = getAppropriateLoadBlancer();
@@ -193,17 +193,21 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
     private UniformLoadBalancerConnectionStrategy getAppropriateLoadBlancer(){
         UniformLoadBalancerConnectionStrategy connectionStrategy;
         if (this.configuration.getTopologyKeys() != null) {
-            connectionStrategy = connectionStrategyMap.get(this.configuration.getTopologyKeys());
-            if (connectionStrategy == null){
-                connectionStrategy = new TopologyAwareLoadBalancerConnectionStrategy(new SingleHostConnectionFunction(this.connectionFunction, this.configuration), this.configuration, this.configuration.getTopologyKeys(), this.configuration.getConnectionSettings(), this.configuration.getYBServersRefreshInterval());
-                connectionStrategyMap.put(this.configuration.getTopologyKeys(), connectionStrategy);
+            synchronized (connectionStrategyMap) {
+                connectionStrategy = connectionStrategyMap.get(this.configuration.getTopologyKeys());
+                if (connectionStrategy == null) {
+                    connectionStrategy = new TopologyAwareLoadBalancerConnectionStrategy(new SingleHostConnectionFunction(this.connectionFunction, this.configuration), this.configuration, this.configuration.getTopologyKeys(), this.configuration.getConnectionSettings(), this.configuration.getYBServersRefreshInterval());
+                    connectionStrategyMap.put(this.configuration.getTopologyKeys(), connectionStrategy);
+                }
             }
         }
         else{
-            connectionStrategy = connectionStrategyMap.get("UniformLoadBalancerConnectionStrategy");
-            if (connectionStrategy == null) {
-                connectionStrategy = new UniformLoadBalancerConnectionStrategy(new SingleHostConnectionFunction(this.connectionFunction, this.configuration), this.configuration, this.configuration.getConnectionSettings(), this.configuration.getYBServersRefreshInterval());
-                connectionStrategyMap.put("UniformLoadBalancerConnectionStrategy", connectionStrategy);
+            synchronized (connectionStrategyMap){
+                connectionStrategy = connectionStrategyMap.get("UniformLoadBalancerConnectionStrategy");
+                if (connectionStrategy == null) {
+                    connectionStrategy = new UniformLoadBalancerConnectionStrategy(new SingleHostConnectionFunction(this.connectionFunction, this.configuration), this.configuration, this.configuration.getConnectionSettings(), this.configuration.getYBServersRefreshInterval());
+                    connectionStrategyMap.put("UniformLoadBalancerConnectionStrategy", connectionStrategy);
+                }
             }
         }
         return connectionStrategy;
