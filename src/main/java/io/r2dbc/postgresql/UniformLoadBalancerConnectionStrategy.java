@@ -164,7 +164,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
 
         for (String h : servers) {
             if (!hostToNumConnMap.containsKey(h) && !unreachableHosts.containsKey(h)) {
-                if(hostToNumConnCountMap.contains(h)){
+                if(hostToNumConnCountMap.containsKey(h)){
                     hostToNumConnMap.put(h, hostToNumConnCountMap.get(h));
                 }
                 else {
@@ -196,7 +196,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
             if (servers != null && !servers.isEmpty()) {
                 for (String h : servers) {
                     if (!hostToNumConnMap.containsKey(h)) {
-                        if(hostToNumConnCountMap.contains(h)){
+                        if(hostToNumConnCountMap.containsKey(h)){
                             hostToNumConnMap.put(h, hostToNumConnCountMap.get(h));
                         }
                         else {

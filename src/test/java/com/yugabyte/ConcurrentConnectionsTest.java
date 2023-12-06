@@ -80,8 +80,6 @@ public class ConcurrentConnectionsTest extends UniformLoadbalancerTest{
             }
             System.out.println("Launched " + numThreads + " threads to create " + numConnectionsPerThread + " connections each");
 
-//            Thread.sleep(10000);
-
             for (int i = 0; i < numThreads; i++) {
                 threads[i].join();
             }
