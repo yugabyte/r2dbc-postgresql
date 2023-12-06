@@ -172,6 +172,71 @@ If you'd rather like the latest snapshots of the upcoming major version, use our
 </repository>
 ```
 
+## YugabyteDB Features
+
+Yugabyte R2DBC driver is a distributed java driver for YSQL built on the PostgreSQL R@DBC driver. Although the upstream PostgreSQL driver works with YugabyteDB, the Yugabyte driver enhances YugabyteDB by eliminating the need for external load balancers.
+
+* It is cluster-aware, which eliminates the need for an external load balancer.
+* It is topology-aware, which is essential for geographically-distributed applications. The driver uses servers that are part of a set of geo-locations specified by topology keys.
+
+### Load balancing
+The Yugabyte R2DBC driver has the following load balancing features:
+
+#### Uniform load balancing
+In this mode, the driver makes the best effort to uniformly distribute the connections to each YugabyteDB server. For example, if a client application creates 100 connections to a YugabyteDB cluster consisting of 10 servers, then the driver creates 10 connections to each server. If the number of connections are not exactly divisible by the number of servers, then a few may have 1 less or 1 more connection than the others. This is the client view of the load, so the servers may not be well balanced if other client applications are not using the Yugabyte JDBC driver.
+
+#### Topology-aware load balancing
+Because YugabyteDB clusters can have servers in different regions and availability zones, the YugabyteDB JDBC driver is topology-aware, and can be configured to create connections only on servers that are in specific regions and zones. This is useful for client applications that need to connect to the geographically nearest regions and availability zone for lower latency; the driver tries to uniformly load only those servers that belong to the specified regions and zone.
+
+### Usage
+Load balancing connection properties:
+
+The following connection properties are added to enable load balancing:
+
+* loadBalanceHosts - enable cluster-aware load balancing by setting this property to True; disabled by default.
+* topologyKeys - provide comma-separated geo-location values to enable topology-aware load balancing. Geo-locations can be provided as cloud.region.zone.
+* topologyKeys - The list of servers, to balance the connection load on, are refreshed periodically every 5 minutes by default. This time can be regulated by this property.
+
+To enable uniform load balancing across all servers, you set the loadBalanceHosts() property to True in the ConnectionBuilder, as per the following example.
+
+Connection String::
+
+```java
+Map<String, String> options = new HashMap<>();
+options.put("lock_timeout", "10s");
+
+PostgresqlConnectionFactory connectionFactory = new PostgresqlConnectionFactory(PostgresqlConnectionConfiguration.builder()
+                    .addHost("127.0.0.1")
+                    .username("yugabyte")
+                    .password("yugabyte")
+                    .database("yugabyte")
+                    .loadBalanceHosts(true)
+                    .build());
+
+Mono<PostgresqlConnection> mono = connectionFactory.create();
+PostgresqlConnection conn = mono.block();
+```
+
+Note: The behaviour of loadBalanceHosts() is different in YugabyteDB R2DBC Driver as compared to the upstream driver. The upstream driver balances connections on the list of hosts provided in the addHost() property while the YugabyteDB R2DBC Driver balances the connections on the list of servers returned by the yb_servers() function.
+To specify topology keys, you set the Topology Keys property to comma separated values.Multiple topologies can also be passed to the Topology Keys property, and each of them can also be given a preference value, as per the following example.:
+
+```java
+Map<String, String> options = new HashMap<>();
+options.put("lock_timeout", "10s");
+
+PostgresqlConnectionFactory connectionFactory = new PostgresqlConnectionFactory(PostgresqlConnectionConfiguration.builder()
+                    .addHost("127.0.0.1")
+                    .username("yugabyte")
+                    .password("yugabyte")
+                    .database("yugabyte")
+                    .loadBalanceHosts(true)
+                    .topologyKeys("cloud1.region1.zone1:1,cloud2.region2.zone2:2")
+                    .build());
+
+Mono<PostgresqlConnection> mono = connectionFactory.create();
+PostgresqlConnection conn = mono.block();
+```
+
 ## Connection Fail-over
 
 To support simple connection fail-over it is possible to define multiple endpoints (host and port pairs) in the connection url separated by commas. The driver will try once to connect to each of them

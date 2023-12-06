@@ -81,7 +81,7 @@ public class FallbackTopologyTest extends UniformLoadbalancerTest {
     }
 
     private static void checkNodeUpBehaviour() throws InterruptedException {
-        System.out.println("Checking Multi Node Down Behaviour...");
+        System.out.println("Checking Multi Node Up Behaviour...");
 
         startYBDBClusterWithSixNodes();
 

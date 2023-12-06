@@ -8,9 +8,7 @@ import reactor.core.publisher.Mono;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy {
@@ -24,21 +22,23 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
     protected static List<String> servers = new ArrayList<>();
 
     ConcurrentHashMap<String, Integer> hostToNumConnMap = new ConcurrentHashMap<>();
+    ConcurrentHashMap<String, Integer> hostToNumConnCountMap = new ConcurrentHashMap<>();
     final ConcurrentHashMap<String, Integer> hostToPriorityMap = new ConcurrentHashMap<>();
 
     protected SocketAddress endpoint;
 
     private long lastServerListFetchTime = 0L;
     protected int refreshListSeconds = 300;
-    List<String> unreachableHosts = new ArrayList<>();
+    /**
+     * The default value should ideally match the interval at which the server-list is updated at
+     * cluster side for yb_servers() function. Here, kept it 5 seconds which is not too high (30s) and
+     * not too low (1s).
+     */
+    static final int DEFAULT_FAILED_HOST_TTL_SECONDS = 5;
+    Map<String, Long> unreachableHosts = new HashMap<String, Long>();
     protected Boolean useHostColumn = null;
     protected List<String> currentPublicIps = new ArrayList<>();
 
-    public UniformLoadBalancerConnectionStrategy(){
-        this.connectionFunction = null;
-        this.configuration = null;
-        this.connectionSettings = null;
-    }
 
     UniformLoadBalancerConnectionStrategy(ConnectionFunction connectionFunction, PostgresqlConnectionConfiguration configuration, ConnectionSettings settings, int refreshListSeconds) {
 
@@ -112,7 +112,8 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
     }
 
     public synchronized void updateFailedHosts(String chosenHost) {
-        unreachableHosts.add(chosenHost);
+        unreachableHosts.putIfAbsent(chosenHost, System.currentTimeMillis() / 1000);
+        hostToNumConnCountMap.remove(chosenHost);
         hostToNumConnMap.remove(chosenHost);
     }
 
@@ -133,16 +134,42 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
         // else clear server list
         long currTime = System.currentTimeMillis();
         lastServerListFetchTime = currTime;
+        long now = System.currentTimeMillis() / 1000;
+
+        long failedHostTTL = Long.getLong("failed-host-ttl-seconds", DEFAULT_FAILED_HOST_TTL_SECONDS);
+        Set<String> possiblyReachableHosts = new HashSet<>();
+        for (Map.Entry<String, Long> e : unreachableHosts.entrySet()) {
+            if ((now - e.getValue()) > failedHostTTL) {
+                possiblyReachableHosts.add(e.getKey());
+            }
+        }
+
+        boolean emptyHostToNumConnMap = false;
+        for (String h : possiblyReachableHosts) {
+            unreachableHosts.remove(h);
+            emptyHostToNumConnMap = true;
+        }
+
+        if (emptyHostToNumConnMap && !hostToNumConnMap.isEmpty()) {
+            for (String h : hostToNumConnMap.keySet()) {
+                hostToNumConnCountMap.put(h, hostToNumConnMap.get(h));
+            }
+            hostToNumConnMap.clear();
+        }
 
         servers = getCurrentServers(controlConnection);
-        unreachableHosts.clear();
         if (servers == null) {
             return false;
         }
 
         for (String h : servers) {
-            if (!hostToNumConnMap.containsKey(h)) {
-                hostToNumConnMap.put(h, 0);
+            if (!hostToNumConnMap.containsKey(h) && !unreachableHosts.containsKey(h)) {
+                if(hostToNumConnCountMap.contains(h)){
+                    hostToNumConnMap.put(h, hostToNumConnCountMap.get(h));
+                }
+                else {
+                    hostToNumConnMap.put(h, 0);
+                }
             }
         }
         return true;
@@ -169,7 +196,12 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
             if (servers != null && !servers.isEmpty()) {
                 for (String h : servers) {
                     if (!hostToNumConnMap.containsKey(h)) {
-                        hostToNumConnMap.put(h, 0);
+                        if(hostToNumConnCountMap.contains(h)){
+                            hostToNumConnMap.put(h, hostToNumConnCountMap.get(h));
+                        }
+                        else {
+                            hostToNumConnMap.put(h, 0);
+                        }
                     }
                 }
             } else {
@@ -181,12 +213,12 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
         ArrayList<String> minConnectionsHostList = new ArrayList<>();
         for (String host : hostToNumConnMap.keySet()) {
             int currLoad = hostToNumConnMap.get(host);
-            if (!unreachableHosts.contains(host) && currLoad < leastConnections) {
+            if (!unreachableHosts.containsKey(host) && currLoad < leastConnections) {
                 leastConnections = currLoad;
                 minConnectionsHostList.clear();
                 minConnectionsHostList.add(host);
             }
-            else if (!unreachableHosts.contains(host) && currLoad == leastConnections) {
+            else if (!unreachableHosts.containsKey(host) && currLoad == leastConnections) {
                 minConnectionsHostList.add(host);
             }
         }

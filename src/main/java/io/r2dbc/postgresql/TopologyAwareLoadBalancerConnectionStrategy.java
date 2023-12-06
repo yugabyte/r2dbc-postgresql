@@ -159,7 +159,7 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
                     .block();
 
             publicIPs.removeAll(Arrays.asList("", null));
-            fallbackPublicIPs.put(allowedCPs.getKey(), privateIPs);
+            fallbackPublicIPs.put(allowedCPs.getKey(), publicIPs);
             allPublicIPs.addAll(publicIPs);
         }
 
@@ -211,7 +211,7 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
             if (chosenHostPriority != null) {
                 for (int i = 1; i < chosenHostPriority; i++) {
                     if (hostToPriorityMap.values().contains(i)) {
-                        hostToNumConnMap.remove(chosenHost);
+                        hostToNumConnCountMap.put(chosenHost, hostToNumConnMap.get(chosenHost));
                         return true;
                     }
                 }
@@ -222,7 +222,7 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
 
     @Override
     protected void updatePriorityMap(String host, String cloud, String region, String zone) {
-        if (!unreachableHosts.contains(host)) {
+        if (!unreachableHosts.containsKey(host)) {
             int priority = getPriority(cloud, region, zone);
             hostToPriorityMap.put(host, priority);
         }
