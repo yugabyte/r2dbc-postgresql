@@ -163,6 +163,43 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
             allPublicIPs.addAll(publicIPs);
         }
 
+        // For rest of the cluster
+
+        List<String> restprivateIPs = Results.flatMap(result -> result.map((row, rowMetadata) -> {
+            String host = row.get("host", String.class);
+            String cloud = row.get("cloud", String.class);
+            String region = row.get("region", String.class);
+            String zone = row.get("zone", String.class);
+            updatePriorityMap(host, cloud, region, zone);
+            if(!allPrivateIPs.contains(host)){
+                return host;
+            }
+            return "";
+        }))
+                .collectList()
+                .block();
+
+        restprivateIPs.removeAll(Arrays.asList("", null));
+        fallbackPrivateIPs.put(REST_OF_CLUSTER, restprivateIPs);
+        allPrivateIPs.addAll(restprivateIPs);
+
+        List<String> restpublicIPs = Results.flatMap(result -> result.map((row, rowMetadata) -> {
+            String host = row.get("public_ip", String.class);
+            String cloud = row.get("cloud", String.class);
+            String region = row.get("region", String.class);
+            String zone = row.get("zone", String.class);
+            if (!allPublicIPs.contains(host)){
+                return host;
+            }
+            return "";
+        }))
+                .collectList()
+                .block();
+
+        restpublicIPs.removeAll(Arrays.asList("", null));
+        fallbackPublicIPs.put(REST_OF_CLUSTER, restpublicIPs);
+        allPublicIPs.addAll(restpublicIPs);
+
         String hostConnectedTo = controlConnection.getResources().getConfiguration().getHostConnectedTo();
         List<String> hostsavailable = this.configuration.getHosts();
         if (allPrivateIPs.contains(hostConnectedTo)){

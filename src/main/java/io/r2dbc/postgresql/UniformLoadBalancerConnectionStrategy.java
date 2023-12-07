@@ -136,7 +136,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
         lastServerListFetchTime = currTime;
         long now = System.currentTimeMillis() / 1000;
 
-        long failedHostTTL = Long.getLong("failed-host-ttl-seconds", DEFAULT_FAILED_HOST_TTL_SECONDS);
+        long failedHostTTL = Long.getLong("failed_host_reconnect_delay_secs", DEFAULT_FAILED_HOST_TTL_SECONDS);
         Set<String> possiblyReachableHosts = new HashSet<>();
         for (Map.Entry<String, Long> e : unreachableHosts.entrySet()) {
             if ((now - e.getValue()) > failedHostTTL) {
