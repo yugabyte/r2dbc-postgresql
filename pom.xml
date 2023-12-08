@@ -540,8 +540,8 @@
             <id>snapshot</id>
             <distributionManagement>
                 <snapshotRepository>
-                    <id>${yugabyte.snapshots.repository.id}</id>
-                    <url>${yugabyte.snapshots.repository.url}</url>
+                    <id>ossrh</id>
+                    <url>https://oss.sonatype.org/content/repositories/snapshots</url>
                 </snapshotRepository>
             </distributionManagement>
         </profile>
@@ -583,7 +583,7 @@
                             <version>1.6.13</version>
                             <extensions>true</extensions>
                             <configuration>
-                                <serverId>ossrh</serverId>
+                                <serverId>sonatype</serverId>
                                 <nexusUrl>https://oss.sonatype.org/</nexusUrl>
                                 <autoReleaseAfterClose>false</autoReleaseAfterClose>
                                 <keepStagingRepositoryOnFailure>true</keepStagingRepositoryOnFailure>
@@ -611,8 +611,8 @@
 
             <distributionManagement>
                 <repository>
-                    <id>${yugabyte.releases.repository.id}</id>
-                    <url>${yugabyte.releases.repository.url}</url>
+                    <id>ossrh</id>
+                    <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
                 </repository>
             </distributionManagement>
 
