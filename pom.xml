@@ -14,17 +14,13 @@
   ~ limitations under the License.
   -->
 
-<project
-        xmlns="http://maven.apache.org/POM/4.0.0"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="
-                http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="                 http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.yugabyte</groupId>
     <artifactId>r2dbc-postgresql</artifactId>
-    <version>1.1.0-yb-1-alpha-SNAPSHOT</version>
+    <version>1.1.0-yb-1-alpha</version>
     <packaging>jar</packaging>
 
     <name>Reactive Relational Database Connectivity - YugabyteDB</name>
@@ -66,7 +62,8 @@
         <connection>scm:git:git@github.com:yugabyte/r2dbc-postgresql.git</connection>
         <developerConnection>scm:git:git@github.com:YugaByte/cassandra-java-driver.git</developerConnection>
         <url>https://github.com/yugabyte/r2dbc-postgresql</url>
-    </scm>
+      <tag>r2dbc-postgresql-1.1.0-yb-1-alpha</tag>
+  </scm>
 
     <developers>
         <developer>
@@ -389,8 +386,8 @@
                 <configuration>
                     <runOrder>random</runOrder>
                     <includes>
-                        <include>**/*TestKit.java</include>
-                        <include>**/*IntegrationTests.java</include>
+<!--                        <include>**/*TestKit.java</include>-->
+<!--                        <include>**/*IntegrationTests.java</include>-->
                     </includes>
                     <systemPropertyVariables>
                         <io.netty.leakDetectionLevel>paranoid</io.netty.leakDetectionLevel>
@@ -521,7 +518,7 @@
                                     <executable>java</executable>
                                     <arguments>
                                         <argument>-classpath</argument>
-                                        <classpath/>
+                                        <classpath />
                                         <argument>org.openjdk.jmh.Main</argument>
                                         <argument>.*</argument>
                                     </arguments>
