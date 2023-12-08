@@ -519,7 +519,7 @@ final class PostgresqlConnectionFactoryProviderUnitTests {
         PostgresqlConnectionFactory factory = this.provider.create(builder()
             .option(DRIVER, POSTGRESQL_DRIVER)
             .option(PROTOCOL, FAILOVER_PROTOCOL)
-            .option(HOST, "host1:5433,host2:5432,host3")
+            .option(HOST, "host1:5433,host2:5433,host3")
             .option(USER, "postgres")
             .option(LOAD_BALANCE_HOSTS, true)
             .option(HOST_RECHECK_TIME, Duration.ofMillis(20000))
