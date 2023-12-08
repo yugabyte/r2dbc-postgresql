@@ -41,7 +41,7 @@ public class FallBackTopologyTestExtended extends FallbackTopologyTest{
             executeCmd(path + "/bin/yb-ctl stop_node 2", "Stop node 2", 10);
             executeCmd(path + "/bin/yb-ctl stop_node 3", "Stop node 3", 10);
             executeCmd(path + "/bin/yb-ctl stop_node 4", "Stop node 4", 10);
-            executeCmd(path + "/bin/yb-ctl stop_node 4", "Stop node 4", 10);
+            executeCmd(path + "/bin/yb-ctl stop_node 5", "Stop node 5", 10);
 
             createConnectionsWithoutClosingAndVerify(numConnections, "aws.us-west.us-west-2a:1,aws.us-west.us-west-2b:2,aws.us-west.us-west-2c:3", Arrays.asList(-1, -1, -1, -1, -1, 12));
 
