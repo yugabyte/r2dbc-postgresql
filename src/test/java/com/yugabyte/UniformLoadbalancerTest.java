@@ -26,7 +26,7 @@ public class UniformLoadbalancerTest {
             .password("yugabyte")
             .database("yugabyte")
             .loadBalanceHosts(true)
-            .ybserversrefreshinterval(10)
+            .ybServersRefreshInterval(10)
             .build());
 
     public static void main (String args[]) throws InterruptedException {

@@ -195,7 +195,7 @@ The following connection properties are added to enable load balancing:
 
 * loadBalanceHosts - enable cluster-aware load balancing by setting this property to True; disabled by default.
 * topologyKeys - provide comma-separated geo-location values to enable topology-aware load balancing. Geo-locations can be provided as cloud.region.zone.
-* ybserversrefreshinterval - The list of servers, to balance the connection load on, are refreshed periodically every 5 minutes by default. This time can be regulated by this property.
+* ybServersRefreshInterval - The list of servers, to balance the connection load on, are refreshed periodically every 5 minutes by default. This time can be regulated by this property.
 
 To enable uniform load balancing across all servers, you set the loadBalanceHosts() property to True in the ConnectionBuilder, as per the following example.
 

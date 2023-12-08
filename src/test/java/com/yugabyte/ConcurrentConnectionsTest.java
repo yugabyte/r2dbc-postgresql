@@ -49,7 +49,7 @@ public class ConcurrentConnectionsTest extends UniformLoadbalancerTest{
                     .password("yugabyte")
                     .database("yugabyte")
                     .loadBalanceHosts(true)
-                    .ybserversrefreshinterval(10)
+                    .ybServersRefreshInterval(10)
                     .build()) :
                     new PostgresqlConnectionFactory(PostgresqlConnectionConfiguration.builder()
                             .addHost("127.0.0.1")
@@ -57,7 +57,7 @@ public class ConcurrentConnectionsTest extends UniformLoadbalancerTest{
                             .password("yugabyte")
                             .database("yugabyte")
                             .loadBalanceHosts(true)
-                            .ybserversrefreshinterval(10)
+                            .ybServersRefreshInterval(10)
                             .topologyKeys(tkValues)
                             .build())
                     ;

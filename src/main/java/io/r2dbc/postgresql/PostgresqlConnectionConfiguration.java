@@ -131,7 +131,7 @@ public final class PostgresqlConnectionConfiguration {
     private static List<String> hosts = null; // Contains the list of all available hosts that can be connected to
     private String hostConnectedTo;
     private final String topologyKeys;
-    private final int YBServersRefreshInterval;
+    private final int ybServersRefreshInterval;
 
     private PostgresqlConnectionConfiguration(String applicationName, boolean autodetectExtensions, @Nullable boolean compatibilityMode, @Nullable Duration connectTimeout, @Nullable String database,
                                               LogLevel errorResponseLogLevel,
@@ -185,7 +185,7 @@ public final class PostgresqlConnectionConfiguration {
         this.loadBalanceHosts = loadBalanceHosts;
         hosts = hostsavailable;
         this.topologyKeys = topologyKeys;
-        this.YBServersRefreshInterval = ybserversrefreshinterval;
+        this.ybServersRefreshInterval = ybserversrefreshinterval;
     }
 
     /**
@@ -225,7 +225,7 @@ public final class PostgresqlConnectionConfiguration {
             ", loadBalanceHosts=" + this.loadBalanceHosts +
             ", hosts=" + hosts +
             ", topologyKeys=" + this.topologyKeys +
-            ", YBServersRefreshInterval=" + this.YBServersRefreshInterval +
+            ", ybServersRefreshInterval=" + this.ybServersRefreshInterval +
             '}';
     }
 
@@ -385,7 +385,7 @@ public final class PostgresqlConnectionConfiguration {
 
     String getHostConnectedTo(){ return this.hostConnectedTo; }
 
-    int getYBServersRefreshInterval() { return this.YBServersRefreshInterval; }
+    int getYBServersRefreshInterval() { return this.ybServersRefreshInterval; }
 
     /**
      * A builder for {@link PostgresqlConnectionConfiguration} instances.
@@ -475,7 +475,7 @@ public final class PostgresqlConnectionConfiguration {
         private boolean loadBalanceHosts = false;
         private static List<String> hosts = new ArrayList<>();
         private String topologyKeys = null;
-        private int ybserversrefreshinterval;
+        private int ybServersRefreshInterval;
 
         private Builder() {
         }
@@ -530,7 +530,7 @@ public final class PostgresqlConnectionConfiguration {
                 this.extensions, this.fetchSize, this.forceBinary, this.lockWaitTimeout, this.loopResources, multiHostConfiguration,
                 this.noticeLogLevel, this.options, this.password, this.preferAttachedBuffers,
                 this.preparedStatementCacheQueries, this.schema, singleHostConfiguration,
-                this.createSslConfig(), this.statementTimeout, this.tcpKeepAlive, this.tcpNoDelay, this.timeZone, this.username, this.loadBalanceHosts, hosts, this.topologyKeys, this.ybserversrefreshinterval);
+                this.createSslConfig(), this.statementTimeout, this.tcpKeepAlive, this.tcpNoDelay, this.timeZone, this.username, this.loadBalanceHosts, hosts, this.topologyKeys, this.ybServersRefreshInterval);
         }
 
         /**
@@ -1103,10 +1103,10 @@ public final class PostgresqlConnectionConfiguration {
          *
          * @param refreshinterval the username
          * @return this {@link Builder}
-         * @throws IllegalArgumentException if {@code ybserversrefreshinterval} is {@code null}
+         * @throws IllegalArgumentException if {@code ybServersRefreshInterval} is {@code null}
          */
-        public Builder ybserversrefreshinterval(int refreshinterval) {
-            this.ybserversrefreshinterval = Assert.requireNonNull(refreshinterval, "username must not be null");
+        public Builder ybServersRefreshInterval(int refreshinterval) {
+            this.ybServersRefreshInterval = Assert.requireNonNull(refreshinterval, "username must not be null");
             return this;
         }
 
@@ -1145,7 +1145,7 @@ public final class PostgresqlConnectionConfiguration {
                 ", loadBalanceHosts=" + this.loadBalanceHosts +
                 ", hosts=" + hosts +
                 ", topologyKeys=" + this.topologyKeys +
-                ", YBServersRefreshInterval=" + this.ybserversrefreshinterval +
+                ", ybServersRefreshInterval=" + this.ybServersRefreshInterval +
                 '}';
         }
 

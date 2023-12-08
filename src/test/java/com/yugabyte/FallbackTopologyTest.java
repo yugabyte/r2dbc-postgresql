@@ -123,7 +123,7 @@ public class FallbackTopologyTest extends UniformLoadbalancerTest {
                 .password("yugabyte")
                 .database("yugabyte")
                 .loadBalanceHosts(true)
-                .ybserversrefreshinterval(10)
+                .ybServersRefreshInterval(10)
                 .topologyKeys(tkValues)
                 .build());
 
