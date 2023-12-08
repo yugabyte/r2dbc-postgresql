@@ -22,14 +22,14 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>org.postgresql</groupId>
+    <groupId>com.yugabyte</groupId>
     <artifactId>r2dbc-postgresql</artifactId>
-    <version>1.1.0.BUILD-SNAPSHOT</version>
+    <version>1.1.0-yb-1-alpha-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-    <name>Reactive Relational Database Connectivity - Postgresql</name>
-    <description>Reactive Relational Database Connectivity Driver Implementation for Postgresql</description>
-    <url>https://github.com/pgjdbc/r2dbc-postgresql</url>
+    <name>Reactive Relational Database Connectivity - YugabyteDB</name>
+    <description>Reactive Relational Database Connectivity Driver Implementation for YugabyteDB</description>
+    <url>https://github.com/yugabyte/r2dbc-postgresql</url>
 
     <properties>
         <assertj.version>3.24.2</assertj.version>
@@ -63,8 +63,9 @@
     </licenses>
 
     <scm>
-        <connection>scm:git:https://github.com/pgjdbc/r2dbc-postgresql</connection>
-        <url>https://github.com/pgjdbc/r2dbc-postgresql</url>
+        <connection>scm:git:git@github.com:yugabyte/r2dbc-postgresql.git</connection>
+        <developerConnection>scm:git:git@github.com:YugaByte/cassandra-java-driver.git</developerConnection>
+        <url>https://github.com/yugabyte/r2dbc-postgresql</url>
     </scm>
 
     <developers>
@@ -83,6 +84,12 @@
         <developer>
             <name>Greg Turnquist</name>
             <email>gturnquist@pivotal.io</email>
+        </developer>
+        <developer>
+            <name>YugaByte Development Team</name>
+            <email>info@yugabyte.com</email>
+            <organization>YugaByte, Inc.</organization>
+            <organizationUrl>https://www.yugabyte.com</organizationUrl>
         </developer>
     </developers>
 
@@ -536,8 +543,8 @@
             <id>snapshot</id>
             <distributionManagement>
                 <snapshotRepository>
-                    <id>sonatype</id>
-                    <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+                    <id>${yugabyte.snapshots.repository.id}</id>
+                    <url>${yugabyte.snapshots.repository.url}</url>
                 </snapshotRepository>
             </distributionManagement>
         </profile>
@@ -607,8 +614,8 @@
 
             <distributionManagement>
                 <repository>
-                    <id>sonatype</id>
-                    <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+                    <id>${yugabyte.releases.repository.id}</id>
+                    <url>${yugabyte.releases.repository.url}</url>
                 </repository>
             </distributionManagement>
 
