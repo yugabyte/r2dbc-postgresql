@@ -62,7 +62,6 @@
         <connection>scm:git:git@github.com:yugabyte/r2dbc-postgresql.git</connection>
         <developerConnection>scm:git:git@github.com:YugaByte/cassandra-java-driver.git</developerConnection>
         <url>https://github.com/yugabyte/r2dbc-postgresql</url>
-      <tag>HEAD</tag>
   </scm>
 
     <developers>
