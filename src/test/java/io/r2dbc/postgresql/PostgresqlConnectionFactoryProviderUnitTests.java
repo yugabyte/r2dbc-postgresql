@@ -533,13 +533,13 @@ final class PostgresqlConnectionFactoryProviderUnitTests {
         List<ServerHost> hosts = factory.getConfiguration().getMultiHostConfiguration().getHosts();
         assertThat(hosts).hasSize(3);
         assertThat(hosts.get(0)).usingRecursiveComparison().isEqualTo(new ServerHost("host1", 5433));
-        assertThat(hosts.get(1)).usingRecursiveComparison().isEqualTo(new ServerHost("host2", 5432));
-        assertThat(hosts.get(2)).usingRecursiveComparison().isEqualTo(new ServerHost("host3", 5432));
+        assertThat(hosts.get(1)).usingRecursiveComparison().isEqualTo(new ServerHost("host2", 5433));
+        assertThat(hosts.get(2)).usingRecursiveComparison().isEqualTo(new ServerHost("host3", 5433));
     }
 
     @Test
     void shouldConnectUsingMultiHostConfigurationFromUrl() {
-        PostgresqlConnectionFactory factory = this.provider.create(ConnectionFactoryOptions.parse("r2dbc:postgresql:failover://user:foo@host1:5433,host2:5432,host3" +
+        PostgresqlConnectionFactory factory = this.provider.create(ConnectionFactoryOptions.parse("r2dbc:postgresql:failover://user:foo@host1:5433,host2:5433,host3" +
             "?loadBalanceHosts=true&hostRecheckTime=20s&targetServerType=SECONdArY"));
 
         assertThat(factory.getConfiguration().getSingleHostConfiguration()).isNull();
@@ -550,7 +550,7 @@ final class PostgresqlConnectionFactoryProviderUnitTests {
         assertThat(config.getTargetServerType()).isEqualTo(MultiHostConnectionStrategy.TargetServerType.SECONDARY);
 
         List<ServerHost> hosts = config.getHosts();
-        assertThat(hosts).hasSize(3).containsExactly(new ServerHost("host1", 5433), new ServerHost("host2", 5432), new ServerHost("host3", 5432));
+        assertThat(hosts).hasSize(3).containsExactly(new ServerHost("host1", 5433), new ServerHost("host2", 5433), new ServerHost("host3", 5433));
     }
 
     @Test

@@ -161,7 +161,7 @@ final class PostgresqlConnectionConfigurationUnitTests {
             .hasFieldOrPropertyWithValue("database", "test-database")
             .hasFieldOrPropertyWithValue("singleHostConfiguration.host", "test-host")
             .hasFieldOrPropertyWithValue("password", "test-password")
-            .hasFieldOrPropertyWithValue("singleHostConfiguration.port", 5432)
+            .hasFieldOrPropertyWithValue("singleHostConfiguration.port", 5433)
             .hasFieldOrProperty("options")
             .hasFieldOrPropertyWithValue("username", "test-username")
             .hasFieldOrProperty("sslConfig")
