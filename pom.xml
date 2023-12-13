@@ -20,7 +20,7 @@
 
     <groupId>com.yugabyte</groupId>
     <artifactId>r2dbc-postgresql</artifactId>
-    <version>1.1.1-SNAPSHOT</version>
+    <version>1.1.0-yb-1-alpha-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>Reactive Relational Database Connectivity - YugabyteDB</name>
@@ -62,7 +62,6 @@
         <connection>scm:git:git@github.com:yugabyte/r2dbc-postgresql.git</connection>
         <developerConnection>scm:git:git@github.com:yugabyte/r2dbc-postgresql.git</developerConnection>
         <url>https://github.com/yugabyte/r2dbc-postgresql</url>
-    <tag>HEAD</tag>
   </scm>
 
     <developers>
@@ -540,7 +539,7 @@
             <id>snapshot</id>
             <distributionManagement>
                 <snapshotRepository>
-                    <id>ossrh</id>
+                    <id>sonatype</id>
                     <url>https://oss.sonatype.org/content/repositories/snapshots</url>
                 </snapshotRepository>
             </distributionManagement>
@@ -611,7 +610,7 @@
 
             <distributionManagement>
                 <repository>
-                    <id>ossrh</id>
+                    <id>sonatype</id>
                     <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
                 </repository>
             </distributionManagement>

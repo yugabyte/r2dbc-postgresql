@@ -1,26 +1,39 @@
+<!--<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"-->
+<!--		  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"-->
+<!--		  xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">-->
+<!--	<servers>-->
+<!--		<server>-->
+<!--			<id>ossrh</id>-->
+<!--			<username>OSSRH_USERNAME</username>-->
+<!--			<password>OSSRH_PASSWORD</password>-->
+<!--		</server>-->
+<!--	</servers>-->
+<!--	<profiles>-->
+<!--		<profile>-->
+<!--			<id>ossrh</id>-->
+<!--			<properties>-->
+<!--				<yugabyte.releases.repository.id>ossrh</yugabyte.releases.repository.id>-->
+<!--				<yugabyte.releases.repository.url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</yugabyte.releases.repository.url>-->
+<!--				<yugabyte.snapshots.repository.id>ossrh</yugabyte.snapshots.repository.id>-->
+<!--				<yugabyte.snapshots.repository.url>https://oss.sonatype.org/content/repositories/snapshots</yugabyte.snapshots.repository.url>-->
+<!--			</properties>-->
+<!--		</profile>-->
+<!--	</profiles>-->
+<!--	<activeProfiles>-->
+<!--		<activeProfile>ossrh</activeProfile>-->
+<!--	</activeProfiles>-->
+<!--</settings>-->
+
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
 		  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 		  xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
+
 	<servers>
 		<server>
-			<id>ossrh</id>
-			<username>OSSRH_USERNAME</username>
-			<password>OSSRH_PASSWORD</password>
+			<id>sonatype</id>
+			<username>${env.OSSRH_USERNAME}</username>
+			<password>${env.OSSRH_PASSWORD}</password>
 		</server>
 	</servers>
-	<profiles>
-		<profile>
-			<id>ossrh</id>
-			<properties>
-				<yugabyte.releases.repository.id>ossrh</yugabyte.releases.repository.id>
-				<yugabyte.releases.repository.url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</yugabyte.releases.repository.url>
-				<yugabyte.snapshots.repository.id>ossrh</yugabyte.snapshots.repository.id>
-				<yugabyte.snapshots.repository.url>https://oss.sonatype.org/content/repositories/snapshots</yugabyte.snapshots.repository.url>
-			</properties>
-		</profile>
-	</profiles>
-	<activeProfiles>
-		<activeProfile>ossrh</activeProfile>
-	</activeProfiles>
 </settings>
 
