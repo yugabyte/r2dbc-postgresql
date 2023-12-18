@@ -527,7 +527,7 @@ final class PostgresqlConnectionFactoryProviderUnitTests {
             .build());
 
         assertThat(factory.getConfiguration().getSingleHostConfiguration()).isNull();
-        assertThat(factory.getConfiguration().getMultiHostConfiguration().isLoadBalanceHosts()).isEqualTo(true);
+        assertThat(factory.getConfiguration().getMultiHostConfiguration().isLoadBalanceHosts()).isEqualTo(false);
         assertThat(factory.getConfiguration().getMultiHostConfiguration().getHostRecheckTime()).isEqualTo(Duration.ofMillis(20000));
         assertThat(factory.getConfiguration().getMultiHostConfiguration().getTargetServerType()).isEqualTo(MultiHostConnectionStrategy.TargetServerType.SECONDARY);
         List<ServerHost> hosts = factory.getConfiguration().getMultiHostConfiguration().getHosts();
@@ -545,7 +545,7 @@ final class PostgresqlConnectionFactoryProviderUnitTests {
         assertThat(factory.getConfiguration().getSingleHostConfiguration()).isNull();
         MultiHostConfiguration config = factory.getConfiguration().getRequiredMultiHostConfiguration();
 
-        assertThat(config.isLoadBalanceHosts()).isEqualTo(true);
+        assertThat(config.isLoadBalanceHosts()).isEqualTo(false);
         assertThat(config.getHostRecheckTime()).isEqualTo(Duration.ofMillis(20000));
         assertThat(config.getTargetServerType()).isEqualTo(MultiHostConnectionStrategy.TargetServerType.SECONDARY);
 
