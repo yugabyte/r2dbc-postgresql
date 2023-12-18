@@ -248,11 +248,25 @@ public final class PostgresqlConnectionFactoryProvider implements ConnectionFact
     public static final Option<Boolean> TCP_NODELAY = Option.valueOf("tcpNoDelay");
 
     /**
+     * Topology Keys.
+     *
+     * @since 1.0
+     */
+    public static final Option<String> TOPOLOGY_KEYS = Option.valueOf("topologyKeys");
+
+    /**
      * Configure the session time zone.
      *
      * @since 1.0
      */
     public static final Option<TimeZone> TIME_ZONE = Option.valueOf("timeZone");
+
+    /**
+     * Enable ybServersRefreshInterval.
+     *
+     * @since 0.8.4
+     */
+    public static final Option<Integer> YB_SERVERS_REFRESH_INTERVAL = Option.valueOf("ybServersRefreshInterval");
 
     /**
      * Returns a new {@link PostgresqlConnectionConfiguration.Builder} configured with the given {@link ConnectionFactoryOptions}.
@@ -340,6 +354,7 @@ public final class PostgresqlConnectionFactoryProvider implements ConnectionFact
         mapper.fromTyped(EXTENSIONS).to(extensions -> extensions.forEach(builder::extendWith));
         mapper.from(FETCH_SIZE).map(OptionMapper::toInteger).to(builder::fetchSize);
         mapper.from(FORCE_BINARY).map(OptionMapper::toBoolean).to(builder::forceBinary);
+        mapper.from(LOAD_BALANCE_HOSTS).map(OptionMapper::toBoolean).to(builder::loadBalanceHosts);
         mapper.from(LOCK_WAIT_TIMEOUT).map(OptionMapper::toDuration).to(builder::lockWaitTimeout);
         mapper.fromTyped(LOOP_RESOURCES).to(builder::loopResources);
         mapper.from(NOTICE_LOG_LEVEL).map(it -> OptionMapper.toEnum(it, LogLevel.class)).to(builder::noticeLogLevel);
@@ -349,6 +364,7 @@ public final class PostgresqlConnectionFactoryProvider implements ConnectionFact
         mapper.from(PREFER_ATTACHED_BUFFERS).map(OptionMapper::toBoolean).to(builder::preferAttachedBuffers);
         mapper.from(PREPARED_STATEMENT_CACHE_QUERIES).map(OptionMapper::toInteger).to(builder::preparedStatementCacheQueries);
         mapper.from(STATEMENT_TIMEOUT).map(OptionMapper::toDuration).to(builder::statementTimeout);
+        mapper.fromTyped(TOPOLOGY_KEYS).to(builder::topologyKeys);
         mapper.from(TCP_KEEPALIVE).map(OptionMapper::toBoolean).to(builder::tcpKeepAlive);
         mapper.from(TCP_NODELAY).map(OptionMapper::toBoolean).to(builder::tcpNoDelay);
         mapper.from(TIME_ZONE).map(it -> {
@@ -364,6 +380,7 @@ public final class PostgresqlConnectionFactoryProvider implements ConnectionFact
             return TimeZone.getTimeZone(it.toString());
         }).to(builder::timeZone);
         builder.username("" + options.getRequiredValue(USER));
+        mapper.from(YB_SERVERS_REFRESH_INTERVAL).map(OptionMapper::toInteger).to(builder::ybServersRefreshInterval);
 
         return builder;
     }

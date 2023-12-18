@@ -540,7 +540,7 @@
             <id>snapshot</id>
             <distributionManagement>
                 <snapshotRepository>
-                    <id>sonatype</id>
+                    <id>ossrh</id>
                     <url>https://oss.sonatype.org/content/repositories/snapshots</url>
                 </snapshotRepository>
             </distributionManagement>
@@ -583,7 +583,7 @@
                             <version>1.6.13</version>
                             <extensions>true</extensions>
                             <configuration>
-                                <serverId>sonatype</serverId>
+                                <serverId>ossrh</serverId>
                                 <nexusUrl>https://oss.sonatype.org/</nexusUrl>
                                 <autoReleaseAfterClose>false</autoReleaseAfterClose>
                                 <keepStagingRepositoryOnFailure>true</keepStagingRepositoryOnFailure>
@@ -611,7 +611,7 @@
 
             <distributionManagement>
                 <repository>
-                    <id>sonatype</id>
+                    <id>ossrh</id>
                     <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
                 </repository>
             </distributionManagement>

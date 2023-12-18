@@ -30,7 +30,7 @@
 
 	<servers>
 		<server>
-			<id>sonatype</id>
+			<id>ossrh</id>
 			<username>${env.OSSRH_USERNAME}</username>
 			<password>${env.OSSRH_PASSWORD}</password>
 		</server>
