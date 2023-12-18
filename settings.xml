@@ -32,7 +32,7 @@
 		<server>
 			<id>ossrh</id>
 			<username>${env.OSSRH_USERNAME}</username>
-			<password>{DMRexU5JHMQHB8olbsFt7PrF4gV8jPUiVj12Wtg/jlI=}</password>
+			<password>${env.OSSRH_PASSWORD}</password>
 		</server>
 	</servers>
 	<activeProfiles>
