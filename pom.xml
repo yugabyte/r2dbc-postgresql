@@ -14,8 +14,11 @@
   ~ limitations under the License.
   -->
 
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation=" http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-
+<project
+        xmlns="http://maven.apache.org/POM/4.0.0"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+                http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.yugabyte</groupId>
@@ -62,7 +65,7 @@
         <connection>scm:git:git@github.com:yugabyte/r2dbc-postgresql.git</connection>
         <developerConnection>scm:git:git@github.com:yugabyte/r2dbc-postgresql.git</developerConnection>
         <url>https://github.com/yugabyte/r2dbc-postgresql</url>
-    <tag>r2dbc-postgresql-1.1.0-yb-1-alpha</tag>
+        <tag>r2dbc-postgresql-1.1.0-yb-1-alpha</tag>
   </scm>
 
     <developers>
@@ -518,7 +521,7 @@
                                     <executable>java</executable>
                                     <arguments>
                                         <argument>-classpath</argument>
-                                        <classpath />
+                                        <classpath/>
                                         <argument>org.openjdk.jmh.Main</argument>
                                         <argument>.*</argument>
                                     </arguments>
