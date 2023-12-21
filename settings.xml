@@ -4,13 +4,10 @@
 
 	<servers>
 		<server>
-			<id>ossrh</id>
-			<username>OSSRH_USERNAME</username>
-			<password>OSSRH_PASSWORD</password>
+			<id>sonatype</id>
+			<username>${env.SONATYPE_USER}</username>
+			<password>${env.SONATYPE_PASSWORD}</password>
 		</server>
 	</servers>
-	<activeProfiles>
-			<activeProfile>central</activeProfile>
-	</activeProfiles>
 </settings>
 
