@@ -122,7 +122,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
         String chosenHost = null;
         UniformLoadBalancerConnectionStrategy connectionStrategy = getAppropriateLoadBlancer();
         List<String> hosts = this.configuration.getHosts();
-            if (chosenHost == null) {
+            if (chosenHost == null && controlConnection == null) {
                 for (Iterator<String> iterator = hosts.iterator(); iterator.hasNext();) {
                     String host = iterator.next();
                     ConnectionFunction connectionFunction = new SingleHostConnectionFunction(this.connectionFunction, this.configuration);
@@ -142,7 +142,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
         if (controlConnection == null || !connectionStrategy.refresh(controlConnection)) {
             return null;
         }
-        controlConnection.close().block();
+//        controlConnection.close().block();
         chosenHost = connectionStrategy.getHostWithLeastConnections();
 
         if (chosenHost == null)
