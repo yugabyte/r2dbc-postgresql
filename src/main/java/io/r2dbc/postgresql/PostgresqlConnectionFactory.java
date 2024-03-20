@@ -61,7 +61,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
 
     // YugabyteDB specific
 
-    private static PostgresqlConnection controlConnection = null;
+    private static Mono<PostgresqlConnection> controlConnection = null;
 
     private static Map<String, UniformLoadBalancerConnectionStrategy> connectionStrategyMap = new LinkedHashMap<>();
 
@@ -112,8 +112,12 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
             }
         }
         ConnectionStrategy connectionStrategy = ConnectionStrategyFactory.getConnectionStrategy(this.connectionFunction, this.configuration, this.configuration.getConnectionSettings());
+//        long startTime = System.nanoTime();
+//        Mono<io.r2dbc.postgresql.api.PostgresqlConnection> newConnection =
         return doCreateConnection(false, connectionStrategy).cast(io.r2dbc.postgresql.api.PostgresqlConnection.class);
-
+//        long endTime = System.nanoTime();
+//        System.out.println("doCreateConnection Created in " + (endTime - startTime)/1000000.0);
+//        return newConnection;
 
     }
 
@@ -127,7 +131,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
                     String host = iterator.next();
                     ConnectionFunction connectionFunction = new SingleHostConnectionFunction(this.connectionFunction, this.configuration);
                     try{
-                        controlConnection = doCreateConnection(null,false, connectionFunction, host).block();
+                        controlConnection = doCreateConnection(null,false, connectionFunction, host);
                         if (controlConnection != null) {
                             break;
                         }
@@ -150,15 +154,18 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
 
         while(chosenHost != null){
             try{
-                Mono<io.r2dbc.postgresql.api.PostgresqlConnection> newConnection = doCreateConnection(connectionStrategy,false, null, chosenHost).cast(io.r2dbc.postgresql.api.PostgresqlConnection.class);
-                newConn = (PostgresqlConnection) newConnection.block();
+//                long startTime = System.nanoTime();
+                Mono<PostgresqlConnection> newConnection = doCreateConnection(connectionStrategy,false, null, chosenHost);
+//                newConn = (PostgresqlConnection) newConnection.block();
+//                long endTime = System.nanoTime();
+//                System.out.println("doCreateConnection Created in " + (endTime - startTime)/1000000.0);
                 connectionStrategy.incDecConnectionCount(chosenHost, 1);
-                if (!connectionStrategy.refresh(newConn)){
+                if (!connectionStrategy.refresh(newConnection)){
                     connectionStrategy.incDecConnectionCount(chosenHost, -1);
                     connectionStrategy.updateFailedHosts(chosenHost);
                     connectionStrategy.setForRefresh();
                     try {
-                        newConn.close().block();
+//                        newConn.close().block();
                     } catch (Exception e) {
                         // ignore as exception is expected. This close is for any other cleanup
                         // which the driver side may be doing
@@ -167,13 +174,14 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
                 else {
                     boolean betterNodeAvailable = connectionStrategy.hasMorePreferredNode(chosenHost);
                     if (betterNodeAvailable){
+                        newConn = newConnection.block();
                         connectionStrategy.incDecConnectionCount(chosenHost, -1);
                         newConn.close().block();
                         newConnection.block().close().block();
                         return createLoadBalancedConnection();
                     }
-                    newConn.close().block();
-                    return newConnection;
+//                    newConn.close().block();
+                    return newConnection.cast(io.r2dbc.postgresql.api.PostgresqlConnection.class);
                 }
             }catch (Exception ex){
                 connectionStrategy.setForRefresh();
