@@ -176,6 +176,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
                 }
             }
         }
+        controlConnection.close().block();
         return true;
     }
 
