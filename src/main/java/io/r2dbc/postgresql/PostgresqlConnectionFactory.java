@@ -147,9 +147,10 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
         if (chosenHost == null)
             return null;
 
+        Mono<PostgresqlConnection> newConnection = null;
         while(chosenHost != null){
-            try{
-                Mono<PostgresqlConnection> newConnection = doCreateConnection(connectionStrategy,false, null, chosenHost);
+            try {
+                newConnection = doCreateConnection(connectionStrategy,false, null, chosenHost);
                 connectionStrategy.incDecConnectionCount(chosenHost, 1);
                 if (!connectionStrategy.refresh(newConnection)){
                     connectionStrategy.incDecConnectionCount(chosenHost, -1);
@@ -170,6 +171,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
             }catch (Exception ex){
                 connectionStrategy.setForRefresh();
                 try {
+                    newConnection.block().close().block();
                     newConn.close().block();
                 }catch (Exception e) {
                     // ignore as the connection is already bad that's why we are here. Calling
@@ -269,7 +271,6 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
                 .single()
                 .doOnDiscard(PostgresqlConnection.class, client -> client.close().subscribe());
     }
-
 
     private Mono<PostgresqlConnection> doCreateConnection(boolean forReplication, ConnectionStrategy connectionStrategy) {
 

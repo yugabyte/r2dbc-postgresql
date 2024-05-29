@@ -105,12 +105,9 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
     }
 
     public Mono<Client> connect(String host) {
-//        long startTime = System.nanoTime();
         incDecConnectionCount(host, 1);
         endpoint = InetSocketAddress.createUnresolved(host, 5433);
         Mono<Client> client = this.connectionFunction.connect(endpoint, this.connectionSettings);
-//        long endTime = System.nanoTime();
-//        System.out.println("Connect() Method in " + (endTime - startTime)/1000000.0);
         return client;
     }
 

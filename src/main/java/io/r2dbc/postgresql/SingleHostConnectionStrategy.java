@@ -38,12 +38,7 @@ final class SingleHostConnectionStrategy implements ConnectionStrategy {
 
     @Override
     public Mono<Client> connect() {
-//        long startTime = System.nanoTime();
-//        Mono<Client> client =
           return this.connectionFunction.connect(this.endpoint, this.connectionSettings);
-//        long endTime = System.nanoTime();
-//        System.out.println("Connect() Created in " + (endTime - startTime)/1000000.0);
-//        return client;
     }
 
     @Override
