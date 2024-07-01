@@ -61,7 +61,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
 
     // YugabyteDB specific
 
-    private static PostgresqlConnection controlConnection = null;
+    private static Mono<PostgresqlConnection> controlConnection = null;
 
     private static Map<String, UniformLoadBalancerConnectionStrategy> connectionStrategyMap = new LinkedHashMap<>();
 
@@ -106,7 +106,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
         }
 
         if (this.configuration.isLoadBalanced()) {
-            Mono<io.r2dbc.postgresql.api.PostgresqlConnection> conn = createLoadBalancedConnection();
+            Mono<io.r2dbc.postgresql.api.PostgresqlConnection> conn = createLoadBalancedConnection().cast(io.r2dbc.postgresql.api.PostgresqlConnection.class);
             if (conn != null) {
                 return conn;
             }
@@ -114,20 +114,19 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
         ConnectionStrategy connectionStrategy = ConnectionStrategyFactory.getConnectionStrategy(this.connectionFunction, this.configuration, this.configuration.getConnectionSettings());
         return doCreateConnection(false, connectionStrategy).cast(io.r2dbc.postgresql.api.PostgresqlConnection.class);
 
-
     }
 
     private synchronized Mono<io.r2dbc.postgresql.api.PostgresqlConnection>  createLoadBalancedConnection() {
         PostgresqlConnection newConn = null;
         String chosenHost = null;
-        UniformLoadBalancerConnectionStrategy connectionStrategy = getAppropriateLoadBlancer();
+        UniformLoadBalancerConnectionStrategy connectionStrategy = getAppropriateLoadBalancer();
         List<String> hosts = this.configuration.getHosts();
-            if (chosenHost == null) {
+            if (chosenHost == null && controlConnection == null) {
                 for (Iterator<String> iterator = hosts.iterator(); iterator.hasNext();) {
                     String host = iterator.next();
                     ConnectionFunction connectionFunction = new SingleHostConnectionFunction(this.connectionFunction, this.configuration);
                     try{
-                        controlConnection = doCreateConnection(null,false, connectionFunction, host).block();
+                        controlConnection = doCreateConnection(null,false, connectionFunction, host);
                         if (controlConnection != null) {
                             break;
                         }
@@ -142,42 +141,37 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
         if (controlConnection == null || !connectionStrategy.refresh(controlConnection)) {
             return null;
         }
-        controlConnection.close().block();
+
         chosenHost = connectionStrategy.getHostWithLeastConnections();
 
         if (chosenHost == null)
             return null;
 
+        Mono<PostgresqlConnection> newConnection = null;
         while(chosenHost != null){
-            try{
-                Mono<io.r2dbc.postgresql.api.PostgresqlConnection> newConnection = doCreateConnection(connectionStrategy,false, null, chosenHost).cast(io.r2dbc.postgresql.api.PostgresqlConnection.class);
-                newConn = (PostgresqlConnection) newConnection.block();
+            try {
+                newConnection = doCreateConnection(connectionStrategy,false, null, chosenHost);
                 connectionStrategy.incDecConnectionCount(chosenHost, 1);
-                if (!connectionStrategy.refresh(newConn)){
+                if (!connectionStrategy.refresh(newConnection)){
                     connectionStrategy.incDecConnectionCount(chosenHost, -1);
                     connectionStrategy.updateFailedHosts(chosenHost);
                     connectionStrategy.setForRefresh();
-                    try {
-                        newConn.close().block();
-                    } catch (Exception e) {
-                        // ignore as exception is expected. This close is for any other cleanup
-                        // which the driver side may be doing
-                    }
                 }
                 else {
                     boolean betterNodeAvailable = connectionStrategy.hasMorePreferredNode(chosenHost);
                     if (betterNodeAvailable){
+                        newConn = newConnection.block();
                         connectionStrategy.incDecConnectionCount(chosenHost, -1);
                         newConn.close().block();
                         newConnection.block().close().block();
                         return createLoadBalancedConnection();
                     }
-                    newConn.close().block();
-                    return newConnection;
+                    return newConnection.cast(io.r2dbc.postgresql.api.PostgresqlConnection.class);
                 }
             }catch (Exception ex){
                 connectionStrategy.setForRefresh();
                 try {
+                    newConnection.block().close().block();
                     newConn.close().block();
                 }catch (Exception e) {
                     // ignore as the connection is already bad that's why we are here. Calling
@@ -190,7 +184,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
         return null;
     }
 
-    private UniformLoadBalancerConnectionStrategy getAppropriateLoadBlancer(){
+    private UniformLoadBalancerConnectionStrategy getAppropriateLoadBalancer(){
         UniformLoadBalancerConnectionStrategy connectionStrategy;
         if (this.configuration.getTopologyKeys() != null) {
             synchronized (connectionStrategyMap) {
@@ -238,7 +232,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
         PostgresqlConnectionConfiguration newConfig = this.configuration;
         newConfig.setHostConnectedTo(host);
 
-        Mono<Client> connclient = connectionStrategy == null? connectionFunction.connect(endpoint, newConfig.getConnectionSettings()) : connectionStrategy.connect(host);
+        Mono<Client> connclient = connectionStrategy == null ? connectionFunction.connect(endpoint, newConfig.getConnectionSettings()) : connectionStrategy.connect(host);
 
         return connclient
                 .flatMap(client -> {
@@ -264,13 +258,13 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
                             })
                             .delayUntil(connection -> {
                                 return prepareConnection(connection, client.getByteBufAllocator(), codecs, forReplication);
-                            })
-                            .onErrorResume(throwable -> this.closeWithError(client, throwable));
-                }).onErrorMap(e -> {
-                    if (e instanceof R2dbcException) {
-                        return e;
-                    }
-                    return new R2dbcNonTransientResourceException(String.format("Cannot create control connection using %s", this.connectionFunction), e);
+                            });
+                })
+                .onErrorResume(throwable -> {
+                    System.out.println(host + " not reachable, adding to failed list");
+                    connectionStrategy.incDecConnectionCount(host, -1);
+                    connectionStrategy.updateFailedHosts(host);
+                    return createLoadBalancedConnection().cast(PostgresqlConnection.class);
                 })
                 .flux()
                 .as(Operators::discardOnCancel)

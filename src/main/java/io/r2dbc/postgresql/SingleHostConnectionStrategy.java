@@ -38,7 +38,7 @@ final class SingleHostConnectionStrategy implements ConnectionStrategy {
 
     @Override
     public Mono<Client> connect() {
-        return this.connectionFunction.connect(this.endpoint, this.connectionSettings);
+          return this.connectionFunction.connect(this.endpoint, this.connectionSettings);
     }
 
     @Override

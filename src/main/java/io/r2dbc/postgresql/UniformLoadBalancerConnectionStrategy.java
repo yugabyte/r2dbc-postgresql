@@ -127,10 +127,11 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
         return false;
     }
 
-    public synchronized boolean refresh(PostgresqlConnection controlConnection) {
+    public synchronized boolean refresh( Mono<PostgresqlConnection> controlConn) {
         if (!needsRefresh()) {
             return true;
         }
+        PostgresqlConnection controlConnection = controlConn.block();
         // else clear server list
         long currTime = System.currentTimeMillis();
         lastServerListFetchTime = currTime;
@@ -172,6 +173,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
                 }
             }
         }
+        controlConnection.close().block();
         return true;
     }
 
