@@ -124,7 +124,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
             System.out.println("Attempting control connection to " + host);
             ConnectionFunction connectionFunction = new SingleHostConnectionFunction(this.connectionFunction, this.configuration);
             try {
-                controlConnection = doCreateConnection(strategy, false, connectionFunction, host).block();
+                controlConnection = doCreateConnection(strategy, false, connectionFunction, host, true).block();
                 if (controlConnection != null) {
                     System.out.println("Control Connection created: " + controlConnection);
                     return true;
@@ -150,7 +150,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
                     String host = iterator.next();
                     ConnectionFunction connectionFunction = new SingleHostConnectionFunction(this.connectionFunction, this.configuration);
                     try{
-                        controlConnection = doCreateConnection(connectionStrategy,false, connectionFunction, host).block();
+                        controlConnection = doCreateConnection(connectionStrategy,false, connectionFunction, host, true).block();
                         if (controlConnection != null) {
                             System.out.println("Control Connection created: " + controlConnection);
                             break;
@@ -192,7 +192,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
         Mono<PostgresqlConnection> newConnection = null;
         while(chosenHost != null){
             try {
-                newConnection = doCreateConnection(connectionStrategy,false, null, chosenHost);
+                newConnection = doCreateConnection(connectionStrategy,false, null, chosenHost, false);
                 connectionStrategy.incDecConnectionCount(chosenHost, 1);
                 if (newConnection == null || !connectionStrategy.refresh(newConnection)) {
                     connectionStrategy.incDecConnectionCount(chosenHost, -1);
@@ -266,7 +266,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
         return doCreateConnection(true, connectionStrategy).map(DefaultPostgresqlReplicationConnection::new);
     }
 
-    private Mono<PostgresqlConnection> doCreateConnection(UniformLoadBalancerConnectionStrategy connectionStrategy, boolean forReplication, ConnectionFunction connectionFunction, String host) {
+    private Mono<PostgresqlConnection> doCreateConnection(UniformLoadBalancerConnectionStrategy connectionStrategy, boolean forReplication, ConnectionFunction connectionFunction, String host, boolean isControlConnection) {
 
         ZoneId defaultZone = TimeZone.getDefault().toZoneId();
         SocketAddress endpoint = InetSocketAddress.createUnresolved(host, 5433);
@@ -303,11 +303,15 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
                             });
                 })
                 .onErrorResume(throwable -> {
-                    System.out.println(host + " not reachable, adding to failed list, e: " + throwable);
-                    connectionStrategy.incDecConnectionCount(host, -1);
-                    connectionStrategy.updateFailedHosts(host);
-                    Mono<io.r2dbc.postgresql.api.PostgresqlConnection> connectionMono = createLoadBalancedConnection();
-                    return connectionMono == null ? null : connectionMono.cast(PostgresqlConnection.class);
+                    if(!isControlConnection) {
+                        System.out.println(host + " not reachable, adding to failed list, e: " + throwable);
+                        connectionStrategy.incDecConnectionCount(host, -1);
+                        connectionStrategy.updateFailedHosts(host);
+                        Mono<io.r2dbc.postgresql.api.PostgresqlConnection> connectionMono = createLoadBalancedConnection();
+                        return connectionMono == null ? null : connectionMono.cast(PostgresqlConnection.class);
+                    }
+                    else
+                        return null;
                 })
                 .flux()
                 .as(Operators::discardOnCancel)
