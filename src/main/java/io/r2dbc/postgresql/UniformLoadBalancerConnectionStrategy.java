@@ -3,6 +3,7 @@ package io.r2dbc.postgresql;
 import io.r2dbc.postgresql.api.PostgresqlResult;
 import io.r2dbc.postgresql.client.Client;
 import io.r2dbc.postgresql.client.ConnectionSettings;
+import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -131,7 +132,15 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
         if (!needsRefresh()) {
             return true;
         }
-        PostgresqlConnection controlConnection = controlConn.block();
+        System.out.println("Calling block() before refreshing metadata ...");
+        return refresh(controlConn.block());
+    }
+
+    public synchronized boolean refresh( PostgresqlConnection controlConnection) {
+        if (!needsRefresh()) {
+            return true;
+        }
+        System.out.println("Refreshing metadata ...");
         // else clear server list
         long currTime = System.currentTimeMillis();
         lastServerListFetchTime = currTime;
@@ -173,7 +182,6 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
                 }
             }
         }
-        controlConnection.close().block();
         return true;
     }
 

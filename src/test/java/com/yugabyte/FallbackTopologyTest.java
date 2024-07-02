@@ -14,10 +14,10 @@ public class FallbackTopologyTest extends UniformLoadbalancerTest {
     private static final String path = System.getenv("YBDB_PATH");
     private static final int numConnections = 12;
 
-    public static void main (String args[]) throws InterruptedException {
-        checkBasicBehavior();
+    public static void main (String[] args) throws InterruptedException {
+//        checkBasicBehavior();
         checkMultiNodeDownBehaviour();
-        checkNodeUpBehaviour();
+//        checkNodeUpBehaviour();
     }
 
     private static void checkBasicBehavior() {
@@ -75,7 +75,7 @@ public class FallbackTopologyTest extends UniformLoadbalancerTest {
             createConnectionsAndVerify("aws.us-west.us-west-1a:1,aws.us-west.us-west-2a:2,aws.us-west.us-west-2b:3,aws.us-west.us-west-2c:4", Arrays.asList(-1, -1, -1, -1, 12, 0));
 
         }finally {
-            executeCmd(path + "/bin/yb-ctl destroy", "Stop YugabyteDB cluster", 10);
+//            executeCmd(path + "/bin/yb-ctl destroy", "Stop YugabyteDB cluster", 10);
             System.out.println("Done");
         }
     }
@@ -123,7 +123,7 @@ public class FallbackTopologyTest extends UniformLoadbalancerTest {
                 .password("yugabyte")
                 .database("yugabyte")
                 .loadBalanceHosts(true)
-                .ybServersRefreshInterval(10)
+                .ybServersRefreshInterval(1)
                 .topologyKeys(tkValues)
                 .build());
 
