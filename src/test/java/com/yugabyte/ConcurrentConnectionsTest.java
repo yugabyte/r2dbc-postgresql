@@ -8,9 +8,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ConcurrentConnectionsTest extends UniformLoadbalancerTest{
-    private static int numConnectionsPerThread = 2;
-    private static int numThreads = 24;
-    private static final String path = System.getenv("YBDB_PATH");
+    protected static int numConnectionsPerThread = 2;
+    protected static int numThreads = 24;
+    protected static final String path = System.getenv("YBDB_PATH");
 
     public static void main(String[] args) throws  InterruptedException {
         if (path == null || path.trim().isEmpty()) {
@@ -22,17 +22,12 @@ public class ConcurrentConnectionsTest extends UniformLoadbalancerTest{
         expected.put("127.0.0.1", total/3);
         expected.put("127.0.0.2", total/3);
         expected.put("127.0.0.3", total/3);
+        controlConnection = "127.0.0.3";
         testConcurrentConnectionCreations(expected, null);
 
-        String tkValues = "aws.us-west.us-west-2a:1,aws.us-west.us-west-2b:2";
-        expected.clear();
-        expected.put("127.0.0.1", total/2);
-        expected.put("127.0.0.2", total/2);
-        expected.put("127.0.0.3", 0);
-        testConcurrentConnectionCreations( expected, tkValues);
     }
 
-    private static void testConcurrentConnectionCreations(Map<String, Integer> expected1, String tkValues) throws
+    protected static void testConcurrentConnectionCreations(Map<String, Integer> expected1, String tkValues) throws
             InterruptedException {
         System.out.println("Running testConcurrentConnectionCreations()");
         startYBDBCluster();

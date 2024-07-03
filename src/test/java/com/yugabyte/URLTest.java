@@ -18,9 +18,11 @@ public class URLTest extends UniformLoadbalancerTest{
 
         startYBDBCluster();
 
+        controlConnection = "127.0.0.3";
+
         Thread.sleep(5000);
 
-        ConnectionFactory connectionFactory = ConnectionFactories.get("r2dbc:postgresql://yugabyte:yugabyte@127.0.0.1:5433/yugabyte?loadBalanceHosts=true");
+        ConnectionFactory connectionFactory = ConnectionFactories.get("r2dbc:postgresql://yugabyte:yugabyte@127.0.0.3:5433/yugabyte?loadBalanceHosts=true");
 
         ArrayList<Connection> connections = new ArrayList<>();
 

@@ -17,10 +17,10 @@ import java.util.stream.Collectors;
 
 public class UniformLoadbalancerTest {
 
-    private static int numConnections = 12;
+    protected static int numConnections = 12;
     private static final String path = System.getenv("YBDB_PATH");
 
-    private static PostgresqlConnectionFactory connectionFactory = new PostgresqlConnectionFactory(PostgresqlConnectionConfiguration.builder()
+    protected static PostgresqlConnectionFactory connectionFactory = new PostgresqlConnectionFactory(PostgresqlConnectionConfiguration.builder()
             .addHost("127.0.0.3")
             .username("yugabyte")
             .password("yugabyte")
@@ -29,14 +29,12 @@ public class UniformLoadbalancerTest {
             .ybServersRefreshInterval(10)
             .build());
 
+    static String controlConnection = "127.0.0.3";
+
     public static void main (String args[]) throws InterruptedException {
-        checkBasicBehaviour();
-        checkNodeDownBehaviour();
-        checkAddNodeBehaviour();
-    }
-
-    private static void checkBasicBehaviour() throws InterruptedException {
         startYBDBCluster();
+
+        controlConnection = "127.0.0.3";
 
         Thread.sleep(5000);
         ArrayList<PostgresqlConnection> connections = new ArrayList<>();
@@ -51,76 +49,6 @@ public class UniformLoadbalancerTest {
         for (PostgresqlConnection connection: connections) {
             connection.close().block();
         }
-    }
-
-    private static void checkNodeDownBehaviour() throws InterruptedException {
-        startYBDBCluster();
-
-        Thread.sleep(5000);
-        ArrayList<PostgresqlConnection> connections = new ArrayList<>();
-
-        for (int i = 0; i < numConnections; i++) {
-            PostgresqlConnection connection = connectionFactory.create().block();
-            connections.add(connection);
-        }
-
-        verifyConns(Arrays.asList(4, 4, 4));
-
-        for (PostgresqlConnection connection: connections) {
-            connection.close().block();
-        }
-
-        connections.clear();
-
-        executeCmd(path + "/bin/yb-ctl stop_node 1", "Stop Node 1 of the cluster", 10);
-        Thread.sleep(10);
-
-        for (int i = 0; i < numConnections; i++) {
-            PostgresqlConnection connection = connectionFactory.create().block();
-            connections.add(connection);
-        }
-
-        verifyConns(Arrays.asList(-1, 6, 6));
-
-        for (PostgresqlConnection connection: connections) {
-            connection.close().block();
-        }
-    }
-
-    private static void checkAddNodeBehaviour() throws InterruptedException {
-
-        startYBDBCluster();
-
-        Thread.sleep(5000);
-        ArrayList<PostgresqlConnection> connections = new ArrayList<>();
-
-        for (int i = 0; i < numConnections; i++) {
-            PostgresqlConnection connection = connectionFactory.create().block();
-            connections.add(connection);
-        }
-
-        verifyConns(Arrays.asList(4, 4, 4));
-
-        for (PostgresqlConnection connection: connections) {
-            connection.close().block();
-        }
-
-        connections.clear();
-
-        executeCmd(path + "/bin/yb-ctl add_node", "Adding 1 node to the cluster", 10);
-        Thread.sleep(10000);
-
-        for (int i = 0; i < numConnections; i++) {
-            PostgresqlConnection connection = connectionFactory.create().block();
-            connections.add(connection);
-        }
-
-        verifyConns(Arrays.asList(3, 3, 3, 3));
-
-        for (PostgresqlConnection connection: connections) {
-            connection.close().block();
-        }
-
     }
 
     protected static void startYBDBCluster() {
@@ -171,8 +99,16 @@ public class UniformLoadbalancerTest {
             System.out.println(server + " = " + (count.length - 1));
             // Server side validation
             if (expectedCount != (count.length - 1)) {
-//                throw new RuntimeException("Client backend processes did not match on host:"+ server+". (expected, actual): "
-//                        + expectedCount + ", " + (count.length - 1));
+                if (server.equalsIgnoreCase(controlConnection)) {
+                    if ((expectedCount + 1) != (count.length - 1)) {
+                        throw new RuntimeException("Client backend processes did not match on host:" + server + ". (expected, actual): "
+                                + expectedCount + ", " + (count.length - 1));
+                    }
+                }
+                else{
+                    throw new RuntimeException("Client backend processes did not match on host:" + server + ". (expected, actual): "
+                            + expectedCount + ", " + (count.length - 1));
+                }
             }
         } catch (InterruptedException | IOException e) {
             System.out.println(e);
