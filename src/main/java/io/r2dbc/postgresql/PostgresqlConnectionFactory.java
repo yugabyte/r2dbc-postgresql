@@ -65,6 +65,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
 
     private static Map<String, UniformLoadBalancerConnectionStrategy> connectionStrategyMap = new LinkedHashMap<>();
 
+
     /**
      * Create a new connection factory.
      *
@@ -171,7 +172,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
                     break;
                 }
             } catch (R2dbcNonTransientResourceException e) {
-                System.out.println("error code " + e.getSql());
+                System.out.println("error " + e);
                 connectionStrategy.updateFailedHosts(controlConnection.getResources().getConfiguration().getHostConnectedTo());
                 boolean success = createControlConnection();
                 if (success) {
@@ -193,7 +194,6 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
         while(chosenHost != null){
             try {
                 newConnection = doCreateConnection(connectionStrategy,false, null, chosenHost, false);
-                connectionStrategy.incDecConnectionCount(chosenHost, 1);
                 if (newConnection == null || !connectionStrategy.refresh(newConnection)) {
                     connectionStrategy.incDecConnectionCount(chosenHost, -1);
                     connectionStrategy.updateFailedHosts(chosenHost);
@@ -271,10 +271,10 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
         ZoneId defaultZone = TimeZone.getDefault().toZoneId();
         SocketAddress endpoint = InetSocketAddress.createUnresolved(host, 5433);
 
-        PostgresqlConnectionConfiguration newConfig = this.configuration;
+        PostgresqlConnectionConfiguration newConfig = new PostgresqlConnectionConfiguration(this.configuration);
         newConfig.setHostConnectedTo(host);
 
-        Mono<Client> connclient = connectionStrategy == null ? connectionFunction.connect(endpoint, newConfig.getConnectionSettings()) : connectionStrategy.connect(host);
+        Mono<Client> connclient = isControlConnection ? connectionFunction.connect(endpoint, newConfig.getConnectionSettings()) : connectionStrategy.connect(host);
 
         return connclient
                 .flatMap(client -> {

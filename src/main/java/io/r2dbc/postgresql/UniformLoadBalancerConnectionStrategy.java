@@ -166,7 +166,6 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
             }
             hostToNumConnMap.clear();
         }
-
         servers = getCurrentServers(controlConnection);
         if (servers == null) {
             return false;

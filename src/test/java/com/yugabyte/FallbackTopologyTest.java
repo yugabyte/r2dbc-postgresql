@@ -15,9 +15,9 @@ public class FallbackTopologyTest extends UniformLoadbalancerTest {
     private static final int numConnections = 12;
 
     public static void main (String[] args) throws InterruptedException {
-//        checkBasicBehavior();
+        checkBasicBehavior();
         checkMultiNodeDownBehaviour();
-//        checkNodeUpBehaviour();
+        checkNodeUpBehaviour();
     }
 
     private static void checkBasicBehavior() {
