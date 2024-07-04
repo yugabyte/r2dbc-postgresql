@@ -84,8 +84,6 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
 
     @Override
     protected List<String> getCurrentServers(PostgresqlConnection controlConnection){
-
-        System.out.println("In get Current Servers...");
         currentPublicIps.clear();
         hostToPriorityMap.clear();
         List <String> allPrivateIPs = new ArrayList<>();
@@ -96,7 +94,6 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
                     String cloud = row.get("cloud", String.class);
                     String region = row.get("region", String.class);
                     String zone = row.get("zone", String.class);
-                    System.out.println("H");
                     updatePriorityMap(host, cloud, region, zone);
                     CloudPlacement cp = new CloudPlacement(cloud, region, zone);
                     if (cp.isContainedIn(allowedPlacements.get(PRIMARY_PLACEMENTS))){
@@ -263,11 +260,7 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
     protected void updatePriorityMap(String host, String cloud, String region, String zone) {
         if (!unreachableHosts.containsKey(host)) {
             int priority = getPriority(cloud, region, zone);
-            System.out.println("Host to priority map: " + hostToPriorityMap + " After adding host:" + host);
             hostToPriorityMap.put(host, priority);
-        }
-        else{
-            System.out.println("Ignoring " + host + " in update priority map");
         }
     }
 

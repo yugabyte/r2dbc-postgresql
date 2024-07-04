@@ -15,8 +15,6 @@ public class NodeDownPrimaryFallBackTest extends FallBackTopologyTestExtended{
         executeCmd(path + "/bin/yb-ctl --rf 3 start --placement_info \"aws.us-west.us-west-1a\" ",
                 "Start YugabyteDB rf=3 cluster", 15);
 
-        System.out.println("Sleeping");
-
         Thread.sleep(10000);
 
         try {

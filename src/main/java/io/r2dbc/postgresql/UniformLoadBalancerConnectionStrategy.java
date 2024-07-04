@@ -3,7 +3,6 @@ package io.r2dbc.postgresql;
 import io.r2dbc.postgresql.api.PostgresqlResult;
 import io.r2dbc.postgresql.client.Client;
 import io.r2dbc.postgresql.client.ConnectionSettings;
-import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -123,7 +122,6 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
         long currentTimeInMillis = System.currentTimeMillis();
         long diff = (currentTimeInMillis - lastServerListFetchTime) / 1000;
         boolean firstTime = servers == null;
-        System.out.println("First time:"+ firstTime + " Diff:" + diff + " Refresh List seconds:" + refreshListSeconds);
         if (firstTime || diff > refreshListSeconds) {
             return true;
         }
@@ -135,23 +133,13 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
             return true;
         }
         PostgresqlConnection conn = null;
-        System.out.println("Calling block() before refreshing metadata ...");
-        System.out.println("controlConn:" + controlConn);
-        try{
-            conn = controlConn.block();
-        }
-        catch (Exception e) {
-            System.out.println("Block fails");
-
-        }
-        return refresh(conn);
+        return refresh(controlConn.block());
     }
 
     public synchronized boolean refresh( PostgresqlConnection controlConnection) {
         if (!needsRefresh()) {
             return true;
         }
-        System.out.println("Refreshing metadata ...");
         // else clear server list
         long currTime = System.currentTimeMillis();
         lastServerListFetchTime = currTime;
