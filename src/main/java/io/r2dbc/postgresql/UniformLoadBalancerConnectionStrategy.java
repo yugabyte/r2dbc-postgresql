@@ -132,7 +132,6 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
         if (!needsRefresh()) {
             return true;
         }
-        PostgresqlConnection conn = null;
         return refresh(controlConn.block());
     }
 
