@@ -38,7 +38,7 @@ public class ConcurrentConnectionsTest extends UniformLoadbalancerTest{
             int total = numThreads * numConnectionsPerThread;
             Thread[] threads = new Thread[numThreads];
 
-            PostgresqlConnectionFactory connectionFactory = tkValues == null? new PostgresqlConnectionFactory(PostgresqlConnectionConfiguration.builder()
+            connectionFactory = tkValues == null ? new PostgresqlConnectionFactory(PostgresqlConnectionConfiguration.builder()
                     .addHost("127.0.0.1")
                     .username("yugabyte")
                     .password("yugabyte")

@@ -36,6 +36,7 @@ public class FallBackTopologyTestExtended extends FallbackTopologyTest{
             executeCmd(path + "/bin/yb-ctl stop_node 4", "Stop node 4", 10);
             Thread.sleep(10000);
 
+            controlConnection = "127.0.0.6";
             createConnectionsWithoutClosingAndVerify(numConnections, "aws.us-west.us-west-2a:1,aws.us-west.us-west-2b:2,aws.us-west.us-west-2c:3", Arrays.asList(-1, -1, -1, -1, 6, 6));
 
             // Restart node 2

@@ -320,9 +320,10 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
                         connectionStrategy.updateFailedHosts(host);
                         Mono<io.r2dbc.postgresql.api.PostgresqlConnection> connectionMono = createLoadBalancedConnection();
                         return connectionMono == null ? null : connectionMono.cast(PostgresqlConnection.class);
-                    }
-                    else
+                    } else {
                         return null;
+                    }
+                    // todo setForceRefresh() needed like in pgjdbc?
                 })
                 .flux()
                 .as(Operators::discardOnCancel)

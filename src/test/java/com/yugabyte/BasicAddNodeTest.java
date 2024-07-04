@@ -1,5 +1,7 @@
 package com.yugabyte;
 
+import io.r2dbc.postgresql.PostgresqlConnectionConfiguration;
+import io.r2dbc.postgresql.PostgresqlConnectionFactory;
 import io.r2dbc.postgresql.api.PostgresqlConnection;
 
 import java.util.ArrayList;
@@ -14,6 +16,14 @@ public class BasicAddNodeTest extends UniformLoadbalancerTest{
         startYBDBCluster();
 
         Thread.sleep(5000);
+        connectionFactory = new PostgresqlConnectionFactory(PostgresqlConnectionConfiguration.builder()
+                .addHost("127.0.0.3")
+                .username("yugabyte")
+                .password("yugabyte")
+                .database("yugabyte")
+                .loadBalanceHosts(true)
+                .ybServersRefreshInterval(1)
+                .build());
         ArrayList<PostgresqlConnection> connections = new ArrayList<>();
 
         for (int i = 0; i < numConnections; i++) {
