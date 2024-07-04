@@ -169,6 +169,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
                 if  (controlConnection == null || !connectionStrategy.refresh(controlConnection)) {
                     return null;
                 } else {
+                    System.out.println("Control Connection is not null or refresh succeeded");
                     break;
                 }
             } catch (R2dbcNonTransientResourceException e) {
@@ -190,6 +191,8 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
         if (chosenHost == null)
             return null;
 
+        System.out.println("Chosen Host:" + chosenHost);
+
         Mono<PostgresqlConnection> newConnection = null;
         while(chosenHost != null){
             try {
@@ -197,25 +200,33 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
                 if (newConnection == null || !connectionStrategy.refresh(newConnection)) {
                     connectionStrategy.incDecConnectionCount(chosenHost, -1);
                     connectionStrategy.updateFailedHosts(chosenHost);
+                    System.out.println("Forcing Refresh in try");
                     connectionStrategy.setForRefresh();
                 }
                 else {
+                    System.out.println("Checking hasMorePreferredNode...");
                     boolean betterNodeAvailable = connectionStrategy.hasMorePreferredNode(chosenHost);
+                    System.out.println("Better Node available:"+ betterNodeAvailable);
                     if (betterNodeAvailable){
-                        newConn = newConnection.block();
+//                        newConn = newConnection.block();
+                        System.out.println("After newConnection.block()");
                         connectionStrategy.incDecConnectionCount(chosenHost, -1);
-                        newConn.close().block();
-                        newConnection.block().close().block();
+//                        newConn.close().block();
+                        System.out.println("After newConn.close().block();");
+//                        newConnection.block().close().block();
+                        System.out.println("Found Better Node for chosen host: " + chosenHost);
                         return createLoadBalancedConnection();
                     }
                     return newConnection.cast(io.r2dbc.postgresql.api.PostgresqlConnection.class);
                 }
             }catch (Exception ex){
+                System.out.println("Forcing Refresh in catch: " + ex);
                 connectionStrategy.setForRefresh();
                 try {
                     newConnection.block().close().block();
                     newConn.close().block();
                 }catch (Exception e) {
+                    System.out.println("Exception while blocking closing:" + e);
                     // ignore as the connection is already bad that's why we are here. Calling
                     // close so that client side cleanup can happen.
                 }

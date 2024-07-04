@@ -45,15 +45,18 @@ public class FallbackTopologyTest extends UniformLoadbalancerTest {
         }
     }
 
-
     protected static void createConnectionsAndVerify(String tkValues, List<Integer> expectedInput) {
-        PostgresqlConnectionFactory connectionFactory = new PostgresqlConnectionFactory(PostgresqlConnectionConfiguration.builder()
+        createConnectionsAndVerify(tkValues, 300, expectedInput);
+    }
+
+    protected static void createConnectionsAndVerify(String tkValues, int refreshInterval, List<Integer> expectedInput) {
+        connectionFactory = new PostgresqlConnectionFactory(PostgresqlConnectionConfiguration.builder()
                 .addHost("127.0.0.1")
                 .username("yugabyte")
                 .password("yugabyte")
                 .database("yugabyte")
                 .loadBalanceHosts(true)
-                .ybServersRefreshInterval(0)
+                .ybServersRefreshInterval(refreshInterval)
                 .topologyKeys(tkValues)
                 .build());
 

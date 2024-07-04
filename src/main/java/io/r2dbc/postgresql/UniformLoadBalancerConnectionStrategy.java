@@ -113,6 +113,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
     }
 
     public synchronized void updateFailedHosts(String chosenHost) {
+        hostToPriorityMap.remove(chosenHost);
         unreachableHosts.putIfAbsent(chosenHost, System.currentTimeMillis() / 1000);
         hostToNumConnCountMap.remove(chosenHost);
         hostToNumConnMap.remove(chosenHost);
@@ -133,16 +134,17 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
         if (!needsRefresh()) {
             return true;
         }
+        PostgresqlConnection conn = null;
         System.out.println("Calling block() before refreshing metadata ...");
         System.out.println("controlConn:" + controlConn);
         try{
-            controlConn.block();
+            conn = controlConn.block();
         }
         catch (Exception e) {
             System.out.println("Block fails");
 
         }
-        return refresh(controlConn.block());
+        return refresh(conn);
     }
 
     public synchronized boolean refresh( PostgresqlConnection controlConnection) {

@@ -1136,7 +1136,7 @@ public final class PostgresqlConnectionConfiguration {
          * @throws IllegalArgumentException if {@code ybServersRefreshInterval} is {@code null}
          */
         public Builder ybServersRefreshInterval(int refreshinterval) {
-            this.ybServersRefreshInterval = Assert.requireNonNull(refreshinterval, "username must not be null");
+            this.ybServersRefreshInterval = Assert.requireNonNull(refreshinterval, "refreshinterval must not be null");
             return this;
         }
 
