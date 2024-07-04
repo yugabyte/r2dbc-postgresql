@@ -26,7 +26,7 @@ public class UniformLoadbalancerTest {
             .password("yugabyte")
             .database("yugabyte")
             .loadBalanceHosts(true)
-            .ybServersRefreshInterval(10)
+            .ybServersRefreshInterval(0)
             .build());
 
     static String controlConnection = "127.0.0.3";

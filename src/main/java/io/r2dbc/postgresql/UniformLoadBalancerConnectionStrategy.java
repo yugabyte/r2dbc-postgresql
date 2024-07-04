@@ -46,7 +46,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
         this.connectionFunction = connectionFunction;
         this.configuration = configuration;
         this.connectionSettings = settings;
-        this.refreshListSeconds = refreshListSeconds > 0 && refreshListSeconds <= 600 ?
+        this.refreshListSeconds = refreshListSeconds >= 0 && refreshListSeconds <= 600 ?
                 refreshListSeconds : 300;
     }
 
@@ -122,6 +122,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
         long currentTimeInMillis = System.currentTimeMillis();
         long diff = (currentTimeInMillis - lastServerListFetchTime) / 1000;
         boolean firstTime = servers == null;
+        System.out.println("First time:"+ firstTime + " Diff:" + diff + " Refresh List seconds:" + refreshListSeconds);
         if (firstTime || diff > refreshListSeconds) {
             return true;
         }
@@ -133,6 +134,14 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
             return true;
         }
         System.out.println("Calling block() before refreshing metadata ...");
+        System.out.println("controlConn:" + controlConn);
+        try{
+            controlConn.block();
+        }
+        catch (Exception e) {
+            System.out.println("Block fails");
+
+        }
         return refresh(controlConn.block());
     }
 
