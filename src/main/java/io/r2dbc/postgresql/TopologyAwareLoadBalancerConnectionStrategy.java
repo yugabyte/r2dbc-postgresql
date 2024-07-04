@@ -30,7 +30,7 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
         this.connectionFunction = connectionFunction;
         this.configuration = configuration;
         this.connectionSettings = settings;
-        this.refreshListSeconds = refreshListSeconds > 0 && refreshListSeconds <= 600 ?
+        this.refreshListSeconds = refreshListSeconds >= 0 && refreshListSeconds <= 600 ?
                 refreshListSeconds : 300;
         parseGeoLocations();
     }
@@ -84,7 +84,6 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
 
     @Override
     protected List<String> getCurrentServers(PostgresqlConnection controlConnection){
-
         currentPublicIps.clear();
         hostToPriorityMap.clear();
         List <String> allPrivateIPs = new ArrayList<>();

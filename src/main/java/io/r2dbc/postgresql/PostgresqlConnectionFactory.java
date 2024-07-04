@@ -61,9 +61,10 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
 
     // YugabyteDB specific
 
-    private static Mono<PostgresqlConnection> controlConnection = null;
+    public static PostgresqlConnection controlConnection = null;
 
     private static Map<String, UniformLoadBalancerConnectionStrategy> connectionStrategyMap = new LinkedHashMap<>();
+
 
     /**
      * Create a new connection factory.
@@ -106,7 +107,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
         }
 
         if (this.configuration.isLoadBalanced()) {
-            Mono<io.r2dbc.postgresql.api.PostgresqlConnection> conn = createLoadBalancedConnection().cast(io.r2dbc.postgresql.api.PostgresqlConnection.class);
+            Mono<io.r2dbc.postgresql.api.PostgresqlConnection> conn = createLoadBalancedConnection();
             if (conn != null) {
                 return conn;
             }
@@ -114,6 +115,24 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
         ConnectionStrategy connectionStrategy = ConnectionStrategyFactory.getConnectionStrategy(this.connectionFunction, this.configuration, this.configuration.getConnectionSettings());
         return doCreateConnection(false, connectionStrategy).cast(io.r2dbc.postgresql.api.PostgresqlConnection.class);
 
+    }
+
+    private synchronized boolean createControlConnection() {
+        List<String> hosts = this.configuration.getHosts();
+        UniformLoadBalancerConnectionStrategy strategy = getAppropriateLoadBalancer();
+        for (Iterator<String> iterator = hosts.iterator(); iterator.hasNext(); ) {
+            String host = iterator.next();
+            ConnectionFunction connectionFunction = new SingleHostConnectionFunction(this.connectionFunction, this.configuration);
+            try {
+                controlConnection = doCreateConnection(strategy, false, connectionFunction, host, true).block();
+                if (controlConnection != null) {
+                    return true;
+                }
+            } catch (Exception e) {
+                iterator.remove();
+            }
+        }
+        return false;
     }
 
     private synchronized Mono<io.r2dbc.postgresql.api.PostgresqlConnection>  createLoadBalancedConnection() {
@@ -126,7 +145,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
                     String host = iterator.next();
                     ConnectionFunction connectionFunction = new SingleHostConnectionFunction(this.connectionFunction, this.configuration);
                     try{
-                        controlConnection = doCreateConnection(null,false, connectionFunction, host);
+                        controlConnection = doCreateConnection(connectionStrategy,false, connectionFunction, host, true).block();
                         if (controlConnection != null) {
                             break;
                         }
@@ -138,8 +157,22 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
                 }
             }
 
-        if (controlConnection == null || !connectionStrategy.refresh(controlConnection)) {
-            return null;
+        while (true) {
+            try {
+                if  (controlConnection == null || !connectionStrategy.refresh(controlConnection)) {
+                    return null;
+                } else {
+                    break;
+                }
+            } catch (R2dbcNonTransientResourceException e) {
+                connectionStrategy.updateFailedHosts(controlConnection.getResources().getConfiguration().getHostConnectedTo());
+                boolean success = createControlConnection();
+                if (success) {
+                    break;
+                } else {
+                    return null;
+                }
+            }
         }
 
         chosenHost = connectionStrategy.getHostWithLeastConnections();
@@ -150,9 +183,8 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
         Mono<PostgresqlConnection> newConnection = null;
         while(chosenHost != null){
             try {
-                newConnection = doCreateConnection(connectionStrategy,false, null, chosenHost);
-                connectionStrategy.incDecConnectionCount(chosenHost, 1);
-                if (!connectionStrategy.refresh(newConnection)){
+                newConnection = doCreateConnection(connectionStrategy,false, null, chosenHost, false);
+                if (newConnection == null || !connectionStrategy.refresh(newConnection)) {
                     connectionStrategy.incDecConnectionCount(chosenHost, -1);
                     connectionStrategy.updateFailedHosts(chosenHost);
                     connectionStrategy.setForRefresh();
@@ -160,10 +192,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
                 else {
                     boolean betterNodeAvailable = connectionStrategy.hasMorePreferredNode(chosenHost);
                     if (betterNodeAvailable){
-                        newConn = newConnection.block();
                         connectionStrategy.incDecConnectionCount(chosenHost, -1);
-                        newConn.close().block();
-                        newConnection.block().close().block();
                         return createLoadBalancedConnection();
                     }
                     return newConnection.cast(io.r2dbc.postgresql.api.PostgresqlConnection.class);
@@ -224,15 +253,15 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
         return doCreateConnection(true, connectionStrategy).map(DefaultPostgresqlReplicationConnection::new);
     }
 
-    private Mono<PostgresqlConnection> doCreateConnection(UniformLoadBalancerConnectionStrategy connectionStrategy, boolean forReplication, ConnectionFunction connectionFunction, String host) {
+    private Mono<PostgresqlConnection> doCreateConnection(UniformLoadBalancerConnectionStrategy connectionStrategy, boolean forReplication, ConnectionFunction connectionFunction, String host, boolean isControlConnection) {
 
         ZoneId defaultZone = TimeZone.getDefault().toZoneId();
         SocketAddress endpoint = InetSocketAddress.createUnresolved(host, 5433);
 
-        PostgresqlConnectionConfiguration newConfig = this.configuration;
+        PostgresqlConnectionConfiguration newConfig = new PostgresqlConnectionConfiguration(this.configuration);
         newConfig.setHostConnectedTo(host);
 
-        Mono<Client> connclient = connectionStrategy == null ? connectionFunction.connect(endpoint, newConfig.getConnectionSettings()) : connectionStrategy.connect(host);
+        Mono<Client> connclient = isControlConnection ? connectionFunction.connect(endpoint, newConfig.getConnectionSettings()) : connectionStrategy.connect(host);
 
         return connclient
                 .flatMap(client -> {
@@ -261,10 +290,16 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
                             });
                 })
                 .onErrorResume(throwable -> {
-                    System.out.println(host + " not reachable, adding to failed list");
-                    connectionStrategy.incDecConnectionCount(host, -1);
-                    connectionStrategy.updateFailedHosts(host);
-                    return createLoadBalancedConnection().cast(PostgresqlConnection.class);
+                    if(!isControlConnection) {
+                        System.out.println(host + " not reachable, adding to failed list");
+                        connectionStrategy.incDecConnectionCount(host, -1);
+                        connectionStrategy.updateFailedHosts(host);
+                        Mono<io.r2dbc.postgresql.api.PostgresqlConnection> connectionMono = createLoadBalancedConnection();
+                        return connectionMono == null ? null : connectionMono.cast(PostgresqlConnection.class);
+                    } else {
+                        return null;
+                    }
+                    // todo setForceRefresh() needed like in pgjdbc?
                 })
                 .flux()
                 .as(Operators::discardOnCancel)

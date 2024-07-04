@@ -133,6 +133,37 @@ public final class PostgresqlConnectionConfiguration {
     private final String topologyKeys;
     private final int ybServersRefreshInterval;
 
+    public PostgresqlConnectionConfiguration(PostgresqlConnectionConfiguration config) {
+        this.applicationName = config.applicationName;
+        this.autodetectExtensions = config.autodetectExtensions;
+        this.compatibilityMode = config.compatibilityMode;
+        this.connectTimeout = config.connectTimeout;
+        this.database = config.database;
+        this.errorResponseLogLevel = config.errorResponseLogLevel;
+        this.extensions = config.extensions; // Ensure this is a deep copy if Extension is mutable
+        this.fetchSize = config.fetchSize;
+        this.forceBinary = config.forceBinary;
+        this.loopResources = config.loopResources;
+        this.multiHostConfiguration = config.multiHostConfiguration; // Ensure this is a deep copy if MultiHostConfiguration is mutable
+        this.noticeLogLevel = config.noticeLogLevel;
+        this.options = new LinkedHashMap<>(config.options);
+        this.password = config.password;
+        this.preferAttachedBuffers = config.preferAttachedBuffers;
+        this.preparedStatementCacheQueries = config.preparedStatementCacheQueries;
+        this.singleHostConfiguration = config.singleHostConfiguration; // Ensure this is a deep copy if SingleHostConfiguration is mutable
+        this.sslConfig = config.sslConfig; // Ensure this is a deep copy if SSLConfig is mutable
+        this.statementTimeout = config.statementTimeout;
+        this.lockWaitTimeout = config.lockWaitTimeout;
+        this.tcpKeepAlive = config.tcpKeepAlive;
+        this.tcpNoDelay = config.tcpNoDelay;
+        this.timeZone = config.timeZone;
+        this.username = config.username;
+        this.loadBalanceHosts = config.loadBalanceHosts;
+        // Ensure this is a deep copy if List<String> is mutable
+        this.topologyKeys = config.topologyKeys;
+        this.ybServersRefreshInterval = config.ybServersRefreshInterval;
+    }
+
     private PostgresqlConnectionConfiguration(String applicationName, boolean autodetectExtensions, @Nullable boolean compatibilityMode, @Nullable Duration connectTimeout, @Nullable String database,
                                               LogLevel errorResponseLogLevel,
                                               List<Extension> extensions, ToIntFunction<String> fetchSize, boolean forceBinary, @Nullable Duration lockWaitTimeout,
@@ -1105,7 +1136,7 @@ public final class PostgresqlConnectionConfiguration {
          * @throws IllegalArgumentException if {@code ybServersRefreshInterval} is {@code null}
          */
         public Builder ybServersRefreshInterval(int refreshinterval) {
-            this.ybServersRefreshInterval = Assert.requireNonNull(refreshinterval, "username must not be null");
+            this.ybServersRefreshInterval = Assert.requireNonNull(refreshinterval, "refreshinterval must not be null");
             return this;
         }
 

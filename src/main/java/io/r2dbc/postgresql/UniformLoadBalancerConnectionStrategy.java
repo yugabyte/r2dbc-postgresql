@@ -45,7 +45,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
         this.connectionFunction = connectionFunction;
         this.configuration = configuration;
         this.connectionSettings = settings;
-        this.refreshListSeconds = refreshListSeconds > 0 && refreshListSeconds <= 600 ?
+        this.refreshListSeconds = refreshListSeconds >= 0 && refreshListSeconds <= 600 ?
                 refreshListSeconds : 300;
     }
 
@@ -112,6 +112,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
     }
 
     public synchronized void updateFailedHosts(String chosenHost) {
+        hostToPriorityMap.remove(chosenHost);
         unreachableHosts.putIfAbsent(chosenHost, System.currentTimeMillis() / 1000);
         hostToNumConnCountMap.remove(chosenHost);
         hostToNumConnMap.remove(chosenHost);
@@ -131,7 +132,13 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
         if (!needsRefresh()) {
             return true;
         }
-        PostgresqlConnection controlConnection = controlConn.block();
+        return refresh(controlConn.block());
+    }
+
+    public synchronized boolean refresh( PostgresqlConnection controlConnection) {
+        if (!needsRefresh()) {
+            return true;
+        }
         // else clear server list
         long currTime = System.currentTimeMillis();
         lastServerListFetchTime = currTime;
@@ -157,7 +164,6 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
             }
             hostToNumConnMap.clear();
         }
-
         servers = getCurrentServers(controlConnection);
         if (servers == null) {
             return false;
@@ -173,7 +179,6 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
                 }
             }
         }
-        controlConnection.close().block();
         return true;
     }
 
