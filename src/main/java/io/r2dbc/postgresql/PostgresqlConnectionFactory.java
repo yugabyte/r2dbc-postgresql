@@ -34,6 +34,8 @@ import io.r2dbc.spi.R2dbcNonTransientResourceException;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.Logger;
+import reactor.util.Loggers;
 import reactor.util.annotation.Nullable;
 
 import java.net.InetSocketAddress;
@@ -64,7 +66,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
     public static PostgresqlConnection controlConnection = null;
 
     private static Map<String, UniformLoadBalancerConnectionStrategy> connectionStrategyMap = new LinkedHashMap<>();
-
+    private static final Logger LOGGER = Loggers.getLogger(PostgresqlConnectionFactory.class.getName());
 
     /**
      * Create a new connection factory.
@@ -111,6 +113,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
             if (conn != null) {
                 return conn;
             }
+            LOGGER.warn("Failed to apply load balance. Trying normal connection");
         }
         ConnectionStrategy connectionStrategy = ConnectionStrategyFactory.getConnectionStrategy(this.connectionFunction, this.configuration, this.configuration.getConnectionSettings());
         return doCreateConnection(false, connectionStrategy).cast(io.r2dbc.postgresql.api.PostgresqlConnection.class);
@@ -126,6 +129,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
             try {
                 controlConnection = doCreateConnection(strategy, false, connectionFunction, host, true).block();
                 if (controlConnection != null) {
+                    LOGGER.debug("Control connection established to host: {}", host);
                     return true;
                 }
             } catch (Exception e) {
@@ -147,12 +151,15 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
                     try{
                         controlConnection = doCreateConnection(connectionStrategy,false, connectionFunction, host, true).block();
                         if (controlConnection != null) {
+                            LOGGER.debug("Control connection established to host: {}", host);
                             break;
                         }
                     }catch (Exception ex){
                         iterator.remove();
-                        if (hosts.isEmpty())
-                            throw ex;
+                        if (hosts.isEmpty()) {
+                            LOGGER.warn("No hosts available for control connection.");
+                            return null;
+                        }
                     }
                 }
             }
@@ -192,6 +199,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
                 else {
                     boolean betterNodeAvailable = connectionStrategy.hasMorePreferredNode(chosenHost);
                     if (betterNodeAvailable){
+                        LOGGER.debug("A better node than {} is available. Will attempt a connection to it", chosenHost);
                         connectionStrategy.incDecConnectionCount(chosenHost, -1);
                         return createLoadBalancedConnection();
                     }
@@ -291,7 +299,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
                 })
                 .onErrorResume(throwable -> {
                     if(!isControlConnection) {
-                        System.out.println(host + " not reachable, adding to failed list");
+                        LOGGER.debug("{} not reachable, adding to failed list", host);
                         connectionStrategy.incDecConnectionCount(host, -1);
                         connectionStrategy.updateFailedHosts(host);
                         Mono<io.r2dbc.postgresql.api.PostgresqlConnection> connectionMono = createLoadBalancedConnection();
