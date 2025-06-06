@@ -5,10 +5,11 @@ import io.r2dbc.postgresql.client.Client;
 import io.r2dbc.postgresql.client.ConnectionSettings;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.Logger;
+import reactor.util.Loggers;
 
 import java.net.InetSocketAddress;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBalancerConnectionStrategy{
 
@@ -23,6 +24,7 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
     private final int FIRST_FALLBACK = 2;
     private final int REST_OF_CLUSTER = -1;
     public static final int MAX_PREFERENCE_VALUE = 10;
+    private static final Logger LOGGER = Loggers.getLogger(TopologyAwareLoadBalancerConnectionStrategy.class.getName());
 
     public TopologyAwareLoadBalancerConnectionStrategy(ConnectionFunction connectionFunction, PostgresqlConnectionConfiguration configuration, String placementvalues, ConnectionSettings settings, int refreshListSeconds) {
         super(connectionFunction,configuration,settings, refreshListSeconds);
@@ -202,6 +204,7 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
         String hostConnectedTo = controlConnection.getResources().getConfiguration().getHostConnectedTo();
         List<String> hostsavailable = this.configuration.getHosts();
         if (allPrivateIPs.contains(hostConnectedTo)){
+            LOGGER.debug("Using private hosts for connection");
             useHostColumn = Boolean.TRUE;
             for (String privateIP : allPrivateIPs) {
                 if (!hostsavailable.contains(privateIP)) {
@@ -210,6 +213,7 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
             }
         }
         else if (allPublicIPs.contains(hostConnectedTo)) {
+            LOGGER.debug("Using public IPs for connection");
             useHostColumn = Boolean.FALSE;
             for (String publicIP : allPublicIPs) {
                 if (!hostsavailable.contains(publicIP)) {
@@ -218,6 +222,7 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
             }
         }
 
+        LOGGER.debug("Current addresses: Private: {}, Public: {}", privateHosts, currentPublicIps);
         return getPrivateOrPublicServers(privateHosts, currentPublicIps);
     }
 
@@ -229,13 +234,14 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
             return servers;
         }
         // If no servers are available in primary placements then attempt fallback nodes.
+        LOGGER.debug("No servers available in primary placements, exploring servers in fallback placements.");
         for (int i = FIRST_FALLBACK; i <= MAX_PREFERENCE_VALUE; i++) {
             if (fallbackPrivateIPs.get(i) != null && !fallbackPrivateIPs.get(i).isEmpty()) {
                 return super.getPrivateOrPublicServers(fallbackPrivateIPs.get(i), fallbackPublicIPs.get(i));
             }
         }
         // If no servers are available in fallback placements then attempt rest of the cluster.
-
+        LOGGER.debug("No servers available in fallback placements, exploring rest of the cluster.");
         return super.getPrivateOrPublicServers(fallbackPrivateIPs.get(REST_OF_CLUSTER),
                 fallbackPublicIPs.get(REST_OF_CLUSTER));
     }

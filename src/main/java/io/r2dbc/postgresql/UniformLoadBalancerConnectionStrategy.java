@@ -5,6 +5,8 @@ import io.r2dbc.postgresql.client.Client;
 import io.r2dbc.postgresql.client.ConnectionSettings;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.Logger;
+import reactor.util.Loggers;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -38,7 +40,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
     Map<String, Long> unreachableHosts = new HashMap<String, Long>();
     protected Boolean useHostColumn = null;
     protected List<String> currentPublicIps = new ArrayList<>();
-
+    private static final Logger LOGGER = Loggers.getLogger(UniformLoadBalancerConnectionStrategy.class.getName());
 
     UniformLoadBalancerConnectionStrategy(ConnectionFunction connectionFunction, PostgresqlConnectionConfiguration configuration, ConnectionSettings settings, int refreshListSeconds) {
 
@@ -51,7 +53,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
 
     public void printCurrentConnectionCounts() {
         for (String host : hostToNumConnMap.keySet()) {
-            System.out.println("Host: " + host + " has " + hostToNumConnMap.get(host) + " connections");
+            LOGGER.info("Host: {} has {} connections", host, hostToNumConnMap.get(host));
         }
     }
 
@@ -68,6 +70,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
         String hostConnectedTo = controlConnection.getResources().getConfiguration().getHostConnectedTo();
         List<String> hostsavailable = this.configuration.getHosts();
             if (privateHosts.contains(hostConnectedTo)){
+                LOGGER.debug("Using private hosts for connection");
                 useHostColumn = Boolean.TRUE;
                 for(String host : privateHosts) {
                     if (!hostsavailable.contains(host)) {
@@ -76,6 +79,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
                 }
             }
             else if (currentPublicIps.contains(hostConnectedTo)) {
+                LOGGER.debug("Using public IPs for connection");
                 useHostColumn = Boolean.FALSE;
                 for(String host : currentPublicIps) {
                     if (!hostsavailable.contains(host)) {
@@ -83,6 +87,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
                     }
                 }
             }
+        LOGGER.debug("Current addresses: Private: {}, Public: {}", privateHosts, currentPublicIps);
         return getPrivateOrPublicServers(privateHosts, currentPublicIps);
     }
 
@@ -91,6 +96,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
                                                           List<String> publicHosts) {
         if (useHostColumn == null) {
             if (publicHosts.isEmpty()) {
+                LOGGER.debug("Using private hosts for connection");
                 useHostColumn = Boolean.TRUE;
             }
             return privateHosts;
@@ -112,6 +118,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
     }
 
     public synchronized void updateFailedHosts(String chosenHost) {
+        LOGGER.info("Host {} is unreachable, marking it as failed", chosenHost);
         hostToPriorityMap.remove(chosenHost);
         unreachableHosts.putIfAbsent(chosenHost, System.currentTimeMillis() / 1000);
         hostToNumConnCountMap.remove(chosenHost);
@@ -130,6 +137,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
 
     public synchronized boolean refresh( Mono<PostgresqlConnection> controlConn) {
         if (!needsRefresh()) {
+            LOGGER.debug("Server list does not need refresh");
             return true;
         }
         return refresh(controlConn.block());
@@ -137,6 +145,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
 
     public synchronized boolean refresh( PostgresqlConnection controlConnection) {
         if (!needsRefresh()) {
+            LOGGER.debug("Server list does not need refresh");
             return true;
         }
         // else clear server list
@@ -166,6 +175,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
         }
         servers = getCurrentServers(controlConnection);
         if (servers == null) {
+            LOGGER.warn("Server list is null after refresh");
             return false;
         }
 
