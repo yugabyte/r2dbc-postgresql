@@ -129,6 +129,11 @@
             <version>${r2dbc-spi.version}</version>
         </dependency>
         <dependency>
+            <groupId>io.r2dbc</groupId>
+            <artifactId>r2dbc-pool</artifactId>
+            <version>1.0.2.RELEASE</version>
+        </dependency>
+        <dependency>
             <groupId>com.ongres.scram</groupId>
             <artifactId>client</artifactId>
             <version>${scram-client.version}</version>

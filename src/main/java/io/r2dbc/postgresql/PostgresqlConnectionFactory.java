@@ -86,6 +86,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
      * @throws IllegalArgumentException if {@code configuration} is {@code null}
      */
     PostgresqlConnectionFactory(ConnectionFunction connectionFunction, PostgresqlConnectionConfiguration configuration) {
+        Loggers.useVerboseConsoleLoggers();
         this.connectionFunction = Assert.requireNonNull(connectionFunction, "connectionFunction must not be null");
         this.configuration = Assert.requireNonNull(configuration, "configuration must not be null");
         this.extensions = getExtensions(configuration);
@@ -129,7 +130,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
             try {
                 controlConnection = doCreateConnection(strategy, false, connectionFunction, host, true).block();
                 if (controlConnection != null) {
-                    LOGGER.debug("Control connection established to host: {}", host);
+                    LOGGER.info("1. Control connection established to host: {}", host);
                     return true;
                 }
             } catch (Exception e) {
@@ -144,14 +145,14 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
         String chosenHost = null;
         UniformLoadBalancerConnectionStrategy connectionStrategy = getAppropriateLoadBalancer();
         List<String> hosts = this.configuration.getHosts();
-            if (chosenHost == null && controlConnection == null) {
+            if (controlConnection == null) {
                 for (Iterator<String> iterator = hosts.iterator(); iterator.hasNext();) {
                     String host = iterator.next();
                     ConnectionFunction connectionFunction = new SingleHostConnectionFunction(this.connectionFunction, this.configuration);
                     try{
                         controlConnection = doCreateConnection(connectionStrategy,false, connectionFunction, host, true).block();
                         if (controlConnection != null) {
-                            LOGGER.debug("Control connection established to host: {}", host);
+                            LOGGER.info("2. Control connection established to host: {}", host);
                             break;
                         }
                     }catch (Exception ex){
@@ -177,6 +178,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
                 if (success) {
                     break;
                 } else {
+                    LOGGER.warn("Could not create control connection.");
                     return null;
                 }
             }
@@ -203,6 +205,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
                         connectionStrategy.incDecConnectionCount(chosenHost, -1);
                         return createLoadBalancedConnection();
                     }
+                    LOGGER.info("Connection created to {}", chosenHost);
                     return newConnection.cast(io.r2dbc.postgresql.api.PostgresqlConnection.class);
                 }
             }catch (Exception ex){
@@ -322,6 +325,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
         return connectionStrategy.connect()
             .flatMap(client -> {
 
+                LOGGER.info("Created connection in doCreateConnection()");
                 DefaultCodecs codecs = new DefaultCodecs(client.getByteBufAllocator(), this.configuration.isPreferAttachedBuffers(),
                     () -> client.getTimeZone().map(TimeZone::toZoneId).orElse(defaultZone));
                 StatementCache statementCache = StatementCache.fromPreparedStatementCacheQueries(client, this.configuration.getPreparedStatementCacheQueries());
