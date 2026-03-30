@@ -102,19 +102,25 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
     @Override
     public Mono<io.r2dbc.postgresql.api.PostgresqlConnection> create() {
 
-        if (isReplicationConnection()) {
-            throw new UnsupportedOperationException("Cannot create replication connection through create(). Use replication() method instead.");
-        }
-
-        if (this.configuration.isLoadBalanced()) {
-            Mono<io.r2dbc.postgresql.api.PostgresqlConnection> conn = createLoadBalancedConnection();
-            if (conn != null) {
-                return conn;
+        // Mono.defer: r2dbc-pool calls factory.create() once and resubscribes to the
+        // returned Mono for each pool slot; defer triggers fresh host selection per subscription.
+        // subscribeOn(boundedElastic): r2dbc-pool runs the allocator on Schedulers.single()
+        // which forbids block(); our load-balanced path needs block() for control-connection
+        // setup and yb_servers() refresh, so we switch to a blocking-capable scheduler.
+        return Mono.defer(() -> {
+            if (isReplicationConnection()) {
+                throw new UnsupportedOperationException("Cannot create replication connection through create(). Use replication() method instead.");
             }
-        }
-        ConnectionStrategy connectionStrategy = ConnectionStrategyFactory.getConnectionStrategy(this.connectionFunction, this.configuration, this.configuration.getConnectionSettings());
-        return doCreateConnection(false, connectionStrategy).cast(io.r2dbc.postgresql.api.PostgresqlConnection.class);
 
+            if (this.configuration.isLoadBalanced()) {
+                Mono<io.r2dbc.postgresql.api.PostgresqlConnection> conn = createLoadBalancedConnection();
+                if (conn != null) {
+                    return conn;
+                }
+            }
+            ConnectionStrategy connectionStrategy = ConnectionStrategyFactory.getConnectionStrategy(this.connectionFunction, this.configuration, this.configuration.getConnectionSettings());
+            return doCreateConnection(false, connectionStrategy).cast(io.r2dbc.postgresql.api.PostgresqlConnection.class);
+        }).subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic());
     }
 
     private synchronized boolean createControlConnection() {

@@ -18,6 +18,7 @@ public class FallbackTopologyTest extends UniformLoadbalancerTest {
         System.out.println("Checking Basic Behaviour...");
         // Start RF=3 cluster with placements 127.0.0.1 -> 2a, 127.0.0.2 -> 2b and 127.0.0.3 -> 2c
         startYBDBCluster();
+        Thread.sleep(10000);
 
         try {
             controlConnection = "127.0.0.3";
