@@ -19,11 +19,11 @@
 
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%date{HH:mm:ss.SSS} %-18thread %-55logger %msg%n</pattern>
+            <pattern>%date{HH:mm:ss.SSS} %-5level %-18thread %-55logger %msg%n</pattern>
         </encoder>
     </appender>
 
-    <logger name="io.r2dbc.postgresql" level="INFO"/>
+    <logger name="io.r2dbc.postgresql" level="TRACE"/>
     <logger name="org.testcontainers"  level="INFO"/>
     <logger name="reactor.netty"       level="WARN"/>
     <logger name="stream"              level="INFO"/>

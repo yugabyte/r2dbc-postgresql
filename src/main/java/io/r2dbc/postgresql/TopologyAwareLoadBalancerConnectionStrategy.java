@@ -5,10 +5,11 @@ import io.r2dbc.postgresql.client.Client;
 import io.r2dbc.postgresql.client.ConnectionSettings;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.Logger;
+import reactor.util.Loggers;
 
 import java.net.InetSocketAddress;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBalancerConnectionStrategy{
 
@@ -23,6 +24,7 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
     private final int FIRST_FALLBACK = 2;
     private final int REST_OF_CLUSTER = -1;
     public static final int MAX_PREFERENCE_VALUE = 10;
+    private static final Logger LOGGER = Loggers.getLogger(TopologyAwareLoadBalancerConnectionStrategy.class.getName());
 
     public TopologyAwareLoadBalancerConnectionStrategy(ConnectionFunction connectionFunction, PostgresqlConnectionConfiguration configuration, String placementvalues, ConnectionSettings settings, int refreshListSeconds) {
         super(connectionFunction,configuration,settings, refreshListSeconds);
@@ -33,6 +35,7 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
         this.refreshListSeconds = refreshListSeconds >= 0 && refreshListSeconds <= 600 ?
                 refreshListSeconds : 300;
         parseGeoLocations();
+        LOGGER.debug("TopologyAwareLoadBalancerConnectionStrategy initialized with placements: {}, refresh interval: {}s", placementvalues, this.refreshListSeconds);
     }
 
     private void populatePlacementSet(String placements, Set<CloudPlacement> allowedPlacements) {
@@ -50,6 +53,7 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
     }
 
     private void parseGeoLocations() {
+        LOGGER.trace("Parsing topology-keys: {}", placements);
         String[] values = placements.split(",");
         for (String value : values) {
             String[] v = value.split(":");
@@ -80,10 +84,12 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
                 }
             }
         }
+        LOGGER.debug("Parsed placement preferences: {}", allowedPlacements);
     }
 
     @Override
     protected List<String> getCurrentServers(PostgresqlConnection controlConnection){
+        LOGGER.debug("Querying yb_servers() with topology-aware strategy. Placements: {}", placements);
         currentPublicIps.clear();
         hostToPriorityMap.clear();
         List <String> allPrivateIPs = new ArrayList<>();
@@ -105,6 +111,7 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
                 .block();
 
         privateHosts.removeAll(Arrays.asList("", null));
+        LOGGER.trace("Primary placement private hosts: {}", privateHosts);
         allPrivateIPs.addAll(privateHosts);
 
         currentPublicIps = Results.flatMap(result -> result.map((row, rowMetadata) -> {
@@ -121,6 +128,7 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
                 .collectList()
                 .block();
         currentPublicIps.removeAll(Arrays.asList("", null));
+        LOGGER.trace("Primary placement public IPs: {}", currentPublicIps);
         allPublicIPs.addAll(currentPublicIps);
 
         for (Map.Entry<Integer, Set<CloudPlacement>> allowedCPs : allowedPlacements.entrySet()) {
@@ -160,6 +168,7 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
             publicIPs.removeAll(Arrays.asList("", null));
             fallbackPublicIPs.put(allowedCPs.getKey(), publicIPs);
             allPublicIPs.addAll(publicIPs);
+            LOGGER.trace("Preference level {} - private IPs: {}, public IPs: {}", allowedCPs.getKey(), privateIPs, publicIPs);
         }
 
         // For rest of the cluster
@@ -198,10 +207,12 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
         restpublicIPs.removeAll(Arrays.asList("", null));
         fallbackPublicIPs.put(REST_OF_CLUSTER, restpublicIPs);
         allPublicIPs.addAll(restpublicIPs);
+        LOGGER.trace("Rest-of-cluster IPs - private: {}, public: {}", restprivateIPs, restpublicIPs);
 
         String hostConnectedTo = controlConnection.getResources().getConfiguration().getHostConnectedTo();
         List<String> hostsavailable = this.configuration.getHosts();
         if (allPrivateIPs.contains(hostConnectedTo)){
+            LOGGER.debug("Using private hosts for connection");
             useHostColumn = Boolean.TRUE;
             for (String privateIP : allPrivateIPs) {
                 if (!hostsavailable.contains(privateIP)) {
@@ -210,6 +221,7 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
             }
         }
         else if (allPublicIPs.contains(hostConnectedTo)) {
+            LOGGER.debug("Using public IPs for connection");
             useHostColumn = Boolean.FALSE;
             for (String publicIP : allPublicIPs) {
                 if (!hostsavailable.contains(publicIP)) {
@@ -218,6 +230,7 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
             }
         }
 
+        LOGGER.debug("Current addresses: Private: {}, Public: {}", privateHosts, currentPublicIps);
         return getPrivateOrPublicServers(privateHosts, currentPublicIps);
     }
 
@@ -226,16 +239,18 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
                                                           List<String> publicHosts) {
         List<String> servers = super.getPrivateOrPublicServers(privateHosts, publicHosts);
         if (servers != null && !servers.isEmpty()) {
+            LOGGER.trace("Returning {} servers from primary placements: {}", servers.size(), servers);
             return servers;
         }
-        // If no servers are available in primary placements then attempt fallback nodes.
+        LOGGER.debug("No servers available in primary placements, exploring servers in fallback placements.");
         for (int i = FIRST_FALLBACK; i <= MAX_PREFERENCE_VALUE; i++) {
             if (fallbackPrivateIPs.get(i) != null && !fallbackPrivateIPs.get(i).isEmpty()) {
+                LOGGER.debug("Found servers at fallback preference level {}: private={}, public={}", i, fallbackPrivateIPs.get(i), fallbackPublicIPs.get(i));
                 return super.getPrivateOrPublicServers(fallbackPrivateIPs.get(i), fallbackPublicIPs.get(i));
             }
         }
         // If no servers are available in fallback placements then attempt rest of the cluster.
-
+        LOGGER.debug("No servers available in fallback placements, exploring rest of the cluster.");
         return super.getPrivateOrPublicServers(fallbackPrivateIPs.get(REST_OF_CLUSTER),
                 fallbackPublicIPs.get(REST_OF_CLUSTER));
     }
@@ -247,12 +262,14 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
             if (chosenHostPriority != null) {
                 for (int i = 1; i < chosenHostPriority; i++) {
                     if (hostToPriorityMap.values().contains(i)) {
+                        LOGGER.debug("Host {} has priority {}, but a node with priority {} exists. Preferring better node", chosenHost, chosenHostPriority, i);
                         hostToNumConnCountMap.put(chosenHost, hostToNumConnMap.get(chosenHost));
                         return true;
                     }
                 }
             }
         }
+        LOGGER.trace("No better preferred node than {} (priority: {})", chosenHost, hostToPriorityMap.get(chosenHost));
         return false;
     }
 
@@ -261,6 +278,9 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
         if (!unreachableHosts.containsKey(host)) {
             int priority = getPriority(cloud, region, zone);
             hostToPriorityMap.put(host, priority);
+            LOGGER.trace("Host {} at {}.{}.{} assigned priority {}", host, cloud, region, zone, priority);
+        } else {
+            LOGGER.trace("Skipping priority update for unreachable host {}", host);
         }
     }
 
@@ -289,6 +309,7 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
                 if (fallbackPrivateIPs.get(i).contains(chosenHost)) {
                     List<String> hosts = fallbackPrivateIPs.computeIfAbsent(i, k -> new ArrayList<>());
                     hosts.remove(chosenHost);
+                    LOGGER.trace("Removed {} from fallback private IPs at preference level {}", chosenHost, i);
                     return;
                 }
             }
@@ -296,6 +317,7 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
                 if (fallbackPublicIPs.get(i).contains(chosenHost)) {
                     List<String> hosts = fallbackPublicIPs.computeIfAbsent(i, k -> new ArrayList<>());
                     hosts.remove(chosenHost);
+                    LOGGER.trace("Removed {} from fallback public IPs at preference level {}", chosenHost, i);
                     return;
                 }
             }
@@ -305,6 +327,7 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
                 List<String> hosts = fallbackPrivateIPs.computeIfAbsent(REST_OF_CLUSTER,
                         k -> new ArrayList<>());
                 hosts.remove(chosenHost);
+                LOGGER.trace("Removed {} from rest-of-cluster private IPs", chosenHost);
                 return;
             }
         }
@@ -314,6 +337,7 @@ public class TopologyAwareLoadBalancerConnectionStrategy extends UniformLoadBala
                 List<String> hosts = fallbackPublicIPs.computeIfAbsent(REST_OF_CLUSTER,
                         k -> new ArrayList<>());
                 hosts.remove(chosenHost);
+                LOGGER.trace("Removed {} from rest-of-cluster public IPs", chosenHost);
             }
         }
     }
