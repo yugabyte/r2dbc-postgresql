@@ -188,6 +188,7 @@ final class PostgresqlConnection implements io.r2dbc.postgresql.api.PostgresqlCo
     public Mono<Void> close() {
         lock.lock();
         if (this.connectionStrategy != null && this.hostConnectedTo != null){
+            logger.trace("Closing load-balanced connection to host: {}", hostConnectedTo);
             connectionStrategy.incDecConnectionCount(hostConnectedTo, -1);
         }
         lock.unlock();

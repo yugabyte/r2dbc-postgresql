@@ -5,6 +5,8 @@ import io.r2dbc.postgresql.client.Client;
 import io.r2dbc.postgresql.client.ConnectionSettings;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.Logger;
+import reactor.util.Loggers;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -38,7 +40,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
     Map<String, Long> unreachableHosts = new HashMap<String, Long>();
     protected Boolean useHostColumn = null;
     protected List<String> currentPublicIps = new ArrayList<>();
-
+    private static final Logger LOGGER = Loggers.getLogger(UniformLoadBalancerConnectionStrategy.class.getName());
 
     UniformLoadBalancerConnectionStrategy(ConnectionFunction connectionFunction, PostgresqlConnectionConfiguration configuration, ConnectionSettings settings, int refreshListSeconds) {
 
@@ -51,7 +53,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
 
     public void printCurrentConnectionCounts() {
         for (String host : hostToNumConnMap.keySet()) {
-            System.out.println("Host: " + host + " has " + hostToNumConnMap.get(host) + " connections");
+            LOGGER.info("Host: {} has {} connections", host, hostToNumConnMap.get(host));
         }
     }
 
@@ -59,15 +61,18 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
     // connection counts
     // by querying "Select * from yb_servers()" using the control connection
     protected List<String> getCurrentServers(PostgresqlConnection controlConnection) {
+        String hostConnectedTo = controlConnection.getResources().getConfiguration().getHostConnectedTo();
+        LOGGER.debug("Querying yb_servers() via control connection on host: {}", hostConnectedTo);
         currentPublicIps.clear();
         Flux<PostgresqlResult> Results = controlConnection.createStatement("Select * from yb_servers()").execute();
         List<String> privateHosts = Results.flatMap(result -> result.map((row, rowMetaData) -> row.get("host", String.class)))
                  .collectList().block();
         currentPublicIps = Results.flatMap(result -> result.map((row, rowMetaData) -> row.get("public_ip", String.class)))
                 .collectList().block();
-        String hostConnectedTo = controlConnection.getResources().getConfiguration().getHostConnectedTo();
+        LOGGER.trace("yb_servers() returned {} private hosts and {} public IPs", privateHosts != null ? privateHosts.size() : 0, currentPublicIps != null ? currentPublicIps.size() : 0);
         List<String> hostsavailable = this.configuration.getHosts();
             if (privateHosts.contains(hostConnectedTo)){
+                LOGGER.debug("Using private hosts for connection");
                 useHostColumn = Boolean.TRUE;
                 for(String host : privateHosts) {
                     if (!hostsavailable.contains(host)) {
@@ -76,6 +81,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
                 }
             }
             else if (currentPublicIps.contains(hostConnectedTo)) {
+                LOGGER.debug("Using public IPs for connection");
                 useHostColumn = Boolean.FALSE;
                 for(String host : currentPublicIps) {
                     if (!hostsavailable.contains(host)) {
@@ -83,6 +89,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
                     }
                 }
             }
+        LOGGER.debug("Current addresses: Private: {}, Public: {}", privateHosts, currentPublicIps);
         return getPrivateOrPublicServers(privateHosts, currentPublicIps);
     }
 
@@ -91,6 +98,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
                                                           List<String> publicHosts) {
         if (useHostColumn == null) {
             if (publicHosts.isEmpty()) {
+                LOGGER.debug("Using private hosts for connection");
                 useHostColumn = Boolean.TRUE;
             }
             return privateHosts;
@@ -105,6 +113,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
     }
 
     public Mono<Client> connect(String host) {
+        LOGGER.trace("Initiating connection to host: {}", host);
         incDecConnectionCount(host, 1);
         endpoint = InetSocketAddress.createUnresolved(host, 5433);
         Mono<Client> client = this.connectionFunction.connect(endpoint, this.connectionSettings);
@@ -112,10 +121,12 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
     }
 
     public synchronized void updateFailedHosts(String chosenHost) {
+        LOGGER.info("Host {} is unreachable, marking it as failed", chosenHost);
         hostToPriorityMap.remove(chosenHost);
         unreachableHosts.putIfAbsent(chosenHost, System.currentTimeMillis() / 1000);
         hostToNumConnCountMap.remove(chosenHost);
         hostToNumConnMap.remove(chosenHost);
+        LOGGER.trace("Unreachable hosts after update: {}", unreachableHosts.keySet());
     }
 
     public boolean needsRefresh() {
@@ -130,6 +141,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
 
     public synchronized boolean refresh( Mono<PostgresqlConnection> controlConn) {
         if (!needsRefresh()) {
+            LOGGER.trace("Server list does not need refresh");
             return true;
         }
         return refresh(controlConn.block());
@@ -137,9 +149,10 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
 
     public synchronized boolean refresh( PostgresqlConnection controlConnection) {
         if (!needsRefresh()) {
+            LOGGER.trace("Server list does not need refresh");
             return true;
         }
-        // else clear server list
+        LOGGER.debug("Refreshing server list from yb_servers()");
         long currTime = System.currentTimeMillis();
         lastServerListFetchTime = currTime;
         long now = System.currentTimeMillis() / 1000;
@@ -157,8 +170,12 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
             unreachableHosts.remove(h);
             emptyHostToNumConnMap = true;
         }
+        if (!possiblyReachableHosts.isEmpty()) {
+            LOGGER.debug("Reinstating previously unreachable hosts after TTL expiry: {}", possiblyReachableHosts);
+        }
 
         if (emptyHostToNumConnMap && !hostToNumConnMap.isEmpty()) {
+            LOGGER.trace("Saving current connection counts before clearing: {}", hostToNumConnMap);
             for (String h : hostToNumConnMap.keySet()) {
                 hostToNumConnCountMap.put(h, hostToNumConnMap.get(h));
             }
@@ -166,6 +183,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
         }
         servers = getCurrentServers(controlConnection);
         if (servers == null) {
+            LOGGER.warn("Server list is null after refresh");
             return false;
         }
 
@@ -179,10 +197,12 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
                 }
             }
         }
+        LOGGER.debug("Refresh complete. Active servers: {}, Connection counts: {}, Unreachable: {}", servers, hostToNumConnMap, unreachableHosts.keySet());
         return true;
     }
 
     public void setForRefresh() {
+        LOGGER.trace("Forcing server list refresh on next access");
         lastServerListFetchTime = 0L;
     }
 
@@ -193,12 +213,14 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
             return;
         if (hostToNumConnMap.get(host) == 0 && incDec < 0)
             return;
-        hostToNumConnMap.put(host, hostToNumConnMap.get(host) + incDec);
+        int newCount = hostToNumConnMap.get(host) + incDec;
+        hostToNumConnMap.put(host, newCount);
+        LOGGER.trace("Connection count for host {}: {} (delta: {})", host, newCount, incDec > 0 ? "+" + incDec : incDec);
     }
 
-    // Get the host with the least number of connections
     public synchronized String getHostWithLeastConnections() {
         if(hostToNumConnMap.isEmpty()){
+            LOGGER.trace("hostToNumConnMap is empty, repopulating from server list");
             servers = getPrivateOrPublicServers(new ArrayList<>(), currentPublicIps);
             if (servers != null && !servers.isEmpty()) {
                 for (String h : servers) {
@@ -212,6 +234,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
                     }
                 }
             } else {
+                LOGGER.debug("No servers available for connection selection");
                 return null;
             }
         }
@@ -233,6 +256,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
             hostWithLeastConnections = minConnectionsHostList.get(new Random().nextInt(minConnectionsHostList.size()));
         }
 
+        LOGGER.debug("Least-loaded host selection: candidates={}, minLoad={}, chosen={}", minConnectionsHostList, leastConnections == Integer.MAX_VALUE ? "N/A" : leastConnections, hostWithLeastConnections);
         return hostWithLeastConnections;
     }
 
