@@ -138,7 +138,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
                 LOGGER.trace("Trying control connection to host: {}", host);
                 controlConnection = doCreateConnection(strategy, false, connectionFunction, host, true).block();
                 if (controlConnection != null) {
-                    LOGGER.debug("Control connection established to host: {}", host);
+                    LOGGER.info("Control connection established to host: {}", host);
                     return true;
                 }
                 LOGGER.trace("Control connection to host {} returned null", host);
@@ -166,7 +166,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
                         LOGGER.trace("Trying control connection to seed host: {}", host);
                         controlConnection = doCreateConnection(connectionStrategy,false, connectionFunction, host, true).block();
                         if (controlConnection != null) {
-                            LOGGER.debug("Control connection established to host: {}", host);
+                            LOGGER.info("Control connection established to host: {}", host);
                             break;
                         }
                     }catch (Exception ex){
@@ -197,7 +197,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
                 if (success) {
                     break;
                 } else {
-                    LOGGER.warn("Failed to re-establish control connection. Aborting load balanced connection");
+                    LOGGER.warn("Failed to re-establish control connection. Aborting attempt to get a load balanced connection");
                     return null;
                 }
             }
@@ -218,7 +218,11 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
                 LOGGER.trace("Attempting data connection to host: {}", chosenHost);
                 newConnection = doCreateConnection(connectionStrategy,false, null, chosenHost, false);
                 if (newConnection == null || !connectionStrategy.refresh(newConnection)) {
-                    LOGGER.debug("Data connection to {} failed or refresh returned false. Marking host as failed", chosenHost);
+                    if (newConnection == null) {
+                        LOGGER.debug("Data connection to {} failed", chosenHost);
+                    } else {
+                        LOGGER.debug("refresh() returned false");
+                    }
                     connectionStrategy.incDecConnectionCount(chosenHost, -1);
                     connectionStrategy.updateFailedHosts(chosenHost);
                     connectionStrategy.setForRefresh();
@@ -234,7 +238,7 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
                     return newConnection.cast(io.r2dbc.postgresql.api.PostgresqlConnection.class);
                 }
             }catch (Exception ex){
-                LOGGER.debug("Exception during data connection to {}: {}. Cleaning up and retrying", chosenHost, ex.getMessage());
+                LOGGER.info("Exception during data connection to {}: {}. Cleaning up and retrying", chosenHost, ex.getMessage());
                 connectionStrategy.setForRefresh();
                 try {
                     newConnection.block().close().block();
@@ -338,13 +342,13 @@ public final class PostgresqlConnectionFactory implements ConnectionFactory {
                 })
                 .onErrorResume(throwable -> {
                     if(!isControlConnection) {
-                        LOGGER.debug("{} not reachable ({}), adding to failed list and retrying", host, throwable.getMessage());
+                        LOGGER.info("{} not reachable ({}), adding to failed list and retrying", host, throwable.getMessage());
                         connectionStrategy.incDecConnectionCount(host, -1);
                         connectionStrategy.updateFailedHosts(host);
                         Mono<io.r2dbc.postgresql.api.PostgresqlConnection> connectionMono = createLoadBalancedConnection();
                         return connectionMono == null ? null : connectionMono.cast(PostgresqlConnection.class);
                     } else {
-                        LOGGER.debug("Control connection to {} failed: {}", host, throwable.getMessage());
+                        LOGGER.warn("Control connection to {} failed: {}", host, throwable.getMessage());
                         return null;
                     }
                     // todo setForceRefresh() needed like in pgjdbc?

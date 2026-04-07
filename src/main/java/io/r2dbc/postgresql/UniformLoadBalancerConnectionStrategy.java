@@ -234,7 +234,7 @@ public class UniformLoadBalancerConnectionStrategy implements ConnectionStrategy
                     }
                 }
             } else {
-                LOGGER.debug("No servers available for connection selection");
+                LOGGER.info("No servers available for connection selection");
                 return null;
             }
         }
