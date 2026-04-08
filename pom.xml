@@ -355,7 +355,7 @@
                         <id>attach-sources</id>
 <!--                        <id>attach-javadocs</id>-->
                         <goals>
-                            <goal>jar</goal>
+                            <goal>jar-no-fork</goal>
                         </goals>
                     </execution>
                 </executions>
